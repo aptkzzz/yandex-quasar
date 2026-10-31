@@ -1,5 +1,5 @@
 name: Quasar Adapter
-version: "0.1.0"
+version: "0.1.2"
 slug: quasar_adapter
 description: Local backend for rooted Yandex Stations — Assist satellite and media player for Home Assistant
 url: https://github.com/darkdarin/yandex-quasar
@@ -21,6 +21,7 @@ options:
   spotter_tail_ms: 300
   glagol_accept_any: true
   account_uid: ""
+  debug_capture: false
   log_level: info
 schema:
   port: port
@@ -30,4 +31,5 @@ schema:
   spotter_tail_ms: int(0,1000)
   glagol_accept_any: bool
   account_uid: str?
+  debug_capture: bool
   log_level: list(debug|info|warning|error)

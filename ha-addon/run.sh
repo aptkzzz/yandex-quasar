@@ -11,6 +11,9 @@ export QUASAR_GLAGOL_ACCEPT_ANY="$(bashio::config 'glagol_accept_any')"
 if bashio::config.has_value 'account_uid'; then
     export QUASAR_ACCOUNT_UID="$(bashio::config 'account_uid')"
 fi
+if bashio::config.true 'debug_capture'; then
+    export QUASAR_BACKEND_CAPTURE_DIR=/config/captures
+fi
 if bashio::config.has_value 'api_token'; then
     export QUASAR_API_TOKEN="$(bashio::config 'api_token')"
 fi

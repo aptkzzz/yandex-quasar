@@ -20,5 +20,8 @@ configuration:
   account_uid:
     name: Yandex account uid
     description: Optional, reported to the station in OAuth answers.
+  debug_capture:
+    name: Capture station reports
+    description: Debug — save raw capability/event reports from the station to /addon_configs/<app>/captures.
   log_level:
     name: Log level

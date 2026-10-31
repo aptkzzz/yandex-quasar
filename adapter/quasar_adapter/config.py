@@ -42,8 +42,12 @@ class Config:
     seed_dir: str = ""
     # Accept glagol tokens we did not issue (other LAN clients such as the yandex_station integration).
     glagol_accept_any: bool = True
+    # Connect to the station's local glagol socket for live state (volume changed by buttons).
+    glagol_client: bool = True
     # Yandex account uid reported in OAuth responses (X-UPRX-UID of the station); optional.
     account_uid: str = ""
+    # Debug: save raw bodies of set_device_capability and rpc gproxy reports here.
+    backend_capture_dir: str = ""
     # When set, PCM sent to HA for every voice turn is also saved as <dir>/<turn_id>.wav (debugging STT quality).
     debug_audio_dir: str = ""
     stations: dict[str, StationOverride] = field(default_factory=dict)

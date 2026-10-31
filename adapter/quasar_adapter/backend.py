@@ -89,6 +89,8 @@ class Backend:
 
     async def handle(self, request: web.Request) -> web.StreamResponse:
         path = request.path.rstrip("/") or "/"
+        if self.cfg.backend_capture_dir and ("/gproxy/" in path or path.endswith("/set_device_capability")):
+            await self._capture(request, path)
         for suffix, handler in self._routes:
             if path == suffix or path.endswith(suffix):
                 if path not in self._seen:
@@ -102,6 +104,16 @@ class Backend:
             _LOGGER.warning("Unhandled backend request %s %s%s (answered status ok)", request.method, request.host,
                             request.path_qs.split("?")[0])
         return web.json_response({"status": "ok"})
+
+    async def _capture(self, request: web.Request, path: str) -> None:
+        """Debug: save raw bodies of capability/event reports to find button, mute and volume events."""
+        body = await request.read()
+        directory = Path(self.cfg.backend_capture_dir)
+        directory.mkdir(parents=True, exist_ok=True)
+        name = f"{time.strftime('%Y%m%d-%H%M%S')}-{int(time.time() * 1000) % 1000:03d}-{path.strip('/').replace('/', '_')}"
+        (directory / f"{name}.bin").write_bytes(body)
+        summary = describe_events(body) if "push_events" in path else f"{len(body)} bytes"
+        _LOGGER.info("Captured %s %s (%s): %s", request.method, path, request.content_type, summary)
 
     @staticmethod
     async def _form(request: web.Request) -> dict[str, str]:
@@ -188,15 +200,18 @@ class Backend:
             _LOGGER.info("Generated glagol certificate for %s", device_id)
         return json.loads(path.read_text())
 
-    async def glagol_token(self, request: web.Request) -> web.StreamResponse:
-        device_id = request.query.get("device_id", "")
+    def mint_glagol_token(self, device_id: str, platform: str) -> str:
         now = int(time.time())
-        claims = {"plt": request.query.get("platform", ""), "sub": device_id, "iss": "quasar-backend",
-                  "aud": "glagol", "iat": now, "exp": now + 86400}
+        claims = {"plt": platform, "sub": device_id, "iss": "quasar-backend", "aud": "glagol",
+                  "iat": now, "exp": now + 86400}
         head = _b64url(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
         payload = _b64url(json.dumps(claims).encode())
         sig = _b64url(hmac.new(self._jwt_key, f"{head}.{payload}".encode(), hashlib.sha256).digest())
-        return web.json_response({"status": "ok", "token": f"{head}.{payload}.{sig}"})
+        return f"{head}.{payload}.{sig}"
+
+    async def glagol_token(self, request: web.Request) -> web.StreamResponse:
+        token = self.mint_glagol_token(request.query.get("device_id", ""), request.query.get("platform", ""))
+        return web.json_response({"status": "ok", "token": token})
 
     async def glagol_check_token(self, request: web.Request) -> web.StreamResponse:
         await request.read()
@@ -262,6 +277,26 @@ class Backend:
 
     async def generate_204(self, request: web.Request) -> web.StreamResponse:
         return web.Response(status=204)
+
+
+def describe_events(body: bytes) -> str:
+    """Human-readable summary of a TIoTEventsBatchRequest (capability events of the station's endpoints)."""
+    from google.protobuf.json_format import MessageToDict
+
+    from . import aapi  # noqa: F401 - puts generated protobuf modules on sys.path
+    from alice.protos.api.rpc.iot.events_batch import events_batch_pb2
+
+    batch = events_batch_pb2.TIoTEventsBatchRequest()
+    try:
+        batch.ParseFromString(body)
+    except Exception as err:  # noqa: BLE001
+        return f"unparsed ({err})"
+    parts = []
+    for endpoint in batch.Batch:
+        for event in endpoint.CapabilityEvents:
+            data = MessageToDict(event, preserving_proto_field_name=True).get("Event", {})
+            parts.append(f"{endpoint.EndpointId}:{json.dumps(data, ensure_ascii=False)[:300]}")
+    return "; ".join(parts) or "empty batch"
 
 
 def _default_config() -> dict:

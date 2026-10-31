@@ -163,7 +163,7 @@ class FakeHA:
 
 @pytest.fixture
 async def adapter(tmp_path):
-    cfg = Config(data_dir=tmp_path, api_token="secret", preroll_timeout=0.3, partial_interval=0.2,
+    cfg = Config(data_dir=tmp_path, api_token="secret", preroll_timeout=0.3, partial_interval=0.2, glagol_client=False,
                  max_utterance=5.0, playback_grace=1.0)
     server = TestServer(build_app(cfg, zeroconf=False))
     await server.start_server()

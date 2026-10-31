@@ -13,9 +13,11 @@ from typing import TYPE_CHECKING, Any
 import aiohttp
 
 from .config import Config
+from .glagol import GlagolClient
 from .station import Station
 
 if TYPE_CHECKING:
+    from .backend import Backend
     from .ha_api import HAClient
     from .session import StationSession
 
@@ -32,6 +34,8 @@ class Hub:
         self.sessions: dict[str, StationSession] = {}
         self.ha_clients: set[HAClient] = set()
         self.http: aiohttp.ClientSession | None = None
+        self.backend: Backend | None = None  # set by build_app; signs glagol tokens
+        self.glagol: dict[str, GlagolClient] = {}
         self._tasks: set[asyncio.Task] = set()
         self._registry_path = config.data_dir / "stations.json"
         self._load_registry()
@@ -46,6 +50,8 @@ class Hub:
         self.http = aiohttp.ClientSession()
 
     async def stop(self) -> None:
+        for client in list(self.glagol.values()):
+            await client.stop()
         for session in list(self.sessions.values()):
             await session.close()
         if self.http:
@@ -94,6 +100,10 @@ class Hub:
         if is_new:
             self.emit(station, "station.added", station.info())
         self.emit_state(station)
+        if self.config.glagol_client and self.backend is not None and station.device_id not in self.glagol:
+            # Live state (volume buttons) that uniproxy never pushes; follows station.state.ip on reconnects.
+            self.glagol[station.device_id] = GlagolClient(self, station)
+            self.glagol[station.device_id].start()
         return station
 
     def station_disconnected(self, session: StationSession) -> None:

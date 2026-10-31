@@ -98,7 +98,8 @@ def build_app(cfg: Config, *, zeroconf: bool = True) -> web.Application:
     app.router.add_get("/{host}/uni.ws", handle_uniproxy)
     app.router.add_get("/ha", HAApi(hub).handle)
     # Everything else is the Yandex cloud HTTP API the station expects (quasar backend, oauth, metrics).
-    app.router.add_route("*", "/{tail:.*}", Backend(hub).handle)
+    hub.backend = Backend(hub)
+    app.router.add_route("*", "/{tail:.*}", hub.backend.handle)
     app.cleanup_ctx.append(_hub_ctx)
     if zeroconf:
         app.cleanup_ctx.append(_zeroconf_ctx)
