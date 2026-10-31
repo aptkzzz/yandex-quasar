@@ -1,0 +1,26 @@
+# Local captures from the station (voice recordings, tokens, personal config) — never commit
+captures/
+# Owner's Home Assistant API token
+main-ha.env
+*.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Adapter runtime data and local config (API token, station registry, glagol keys)
+adapter/data/
+adapter/config.toml
+data/
+# Generated from v3rt3p/quasar-protos (Yandex copyright) by adapter/tools/gen_protos.sh
+adapter/quasar_adapter/_proto/
+# Local test audio (synthesized with macOS voices)
+adapter/assets/
+
+# Add-on local build context
+ha-addon/.build/
+
+.DS_Store
+.idea/

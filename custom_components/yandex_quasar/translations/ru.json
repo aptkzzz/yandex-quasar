@@ -1,0 +1,86 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Quasar Adapter",
+        "description": "Подключение к Quasar Adapter, через который работают ваши Яндекс Станции.",
+        "data": {
+          "host": "Хост",
+          "port": "Порт",
+          "token": "API-токен"
+        },
+        "data_description": {
+          "token": "Адаптер хранит его в файле data/api_token."
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Quasar Adapter",
+        "description": "Подключиться к {name} ({host})?",
+        "data": {
+          "token": "API-токен"
+        },
+        "data_description": {
+          "token": "Адаптер хранит его в файле data/api_token."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Обновить токен адаптера",
+        "data": {
+          "token": "API-токен"
+        },
+        "data_description": {
+          "token": "Адаптер хранит его в файле data/api_token."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Не удалось подключиться к адаптеру",
+      "invalid_auth": "Неверный API-токен"
+    },
+    "abort": {
+      "already_configured": "Этот адаптер уже настроен",
+      "no_adapter_id": "Найденный адаптер не сообщил свой идентификатор",
+      "reauth_successful": "Токен обновлён"
+    }
+  },
+  "entity": {
+    "media_player": {
+      "player": {
+        "name": "Плеер"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Статус",
+        "state": {
+          "online": "В сети",
+          "station_offline": "Станция не в сети",
+          "adapter_offline": "Адаптер не в сети"
+        }
+      }
+    },
+    "select": {
+      "pipeline": {
+        "name": "Ассистент",
+        "state": {
+          "preferred": "Предпочтительный"
+        }
+      },
+      "pipeline_n": {
+        "name": "Ассистент {index}",
+        "state": {
+          "preferred": "Предпочтительный"
+        }
+      },
+      "vad_sensitivity": {
+        "name": "Определение конца речи",
+        "state": {
+          "default": "По умолчанию",
+          "aggressive": "Быстрое",
+          "relaxed": "Медленное"
+        }
+      }
+    }
+  }
+}

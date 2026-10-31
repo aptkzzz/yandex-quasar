@@ -1,0 +1,24 @@
+{
+  "domain": "yandex_quasar",
+  "name": "Yandex Station (Quasar Adapter)",
+  "codeowners": [
+    "@darkdarin"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "assist_pipeline",
+    "assist_satellite",
+    "conversation",
+    "intent",
+    "media_source"
+  ],
+  "documentation": "https://github.com/darkdarin/yandex-quasar",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/darkdarin/yandex-quasar/issues",
+  "requirements": [],
+  "version": "0.1.0",
+  "zeroconf": [
+    "_quasar-adapter._tcp.local."
+  ]
+}

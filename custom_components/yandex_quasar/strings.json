@@ -1,0 +1,86 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Quasar Adapter",
+        "description": "Connect to a Quasar Adapter serving your Yandex Stations.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "token": "API token"
+        },
+        "data_description": {
+          "token": "Stored by the adapter in data/api_token."
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Quasar Adapter",
+        "description": "Connect to {name} at {host}?",
+        "data": {
+          "token": "API token"
+        },
+        "data_description": {
+          "token": "Stored by the adapter in data/api_token."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Update adapter token",
+        "data": {
+          "token": "API token"
+        },
+        "data_description": {
+          "token": "Stored by the adapter in data/api_token."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the adapter",
+      "invalid_auth": "Invalid API token"
+    },
+    "abort": {
+      "already_configured": "This adapter is already configured",
+      "no_adapter_id": "The discovered adapter did not report its ID",
+      "reauth_successful": "Token updated"
+    }
+  },
+  "entity": {
+    "media_player": {
+      "player": {
+        "name": "Player"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "online": "Online",
+          "station_offline": "Station offline",
+          "adapter_offline": "Adapter offline"
+        }
+      }
+    },
+    "select": {
+      "pipeline": {
+        "name": "Assistant",
+        "state": {
+          "preferred": "Preferred"
+        }
+      },
+      "pipeline_n": {
+        "name": "Assistant {index}",
+        "state": {
+          "preferred": "Preferred"
+        }
+      },
+      "vad_sensitivity": {
+        "name": "Finished speaking detection",
+        "state": {
+          "default": "Default",
+          "aggressive": "Aggressive",
+          "relaxed": "Relaxed"
+        }
+      }
+    }
+  }
+}

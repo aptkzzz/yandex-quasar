@@ -1,0 +1,34 @@
+name: Quasar Adapter
+version: "0.1.0"
+slug: quasar_adapter
+description: Local backend for rooted Yandex Stations — Assist satellite and media player for Home Assistant
+url: https://github.com/darkdarin/yandex-quasar
+arch:
+  - aarch64
+  - amd64
+init: false
+startup: services
+boot: auto
+# Stations connect directly (ws://<host>:<port>/uni.ws) and the adapter announces itself via mDNS.
+host_network: true
+# /config inside the app = /addon_configs/<slug> on the host: seed files captured from the station.
+map:
+  - addon_config:rw
+options:
+  port: 8080
+  api_token: ""
+  mic_gain_db: 30
+  speech_threshold_db: -40
+  spotter_tail_ms: 300
+  glagol_accept_any: true
+  account_uid: ""
+  log_level: info
+schema:
+  port: port
+  api_token: password?
+  mic_gain_db: float(0,50)
+  speech_threshold_db: float(-80,0)
+  spotter_tail_ms: int(0,1000)
+  glagol_accept_any: bool
+  account_uid: str?
+  log_level: list(debug|info|warning|error)

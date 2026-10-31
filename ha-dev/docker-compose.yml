@@ -1,0 +1,22 @@
+# Local test Home Assistant for developing custom_components/yandex_quasar.
+# Usage: docker compose up -d   (UI: http://localhost:8123)
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:2026.10.4
+    ports: ["8123:8123"]
+    volumes:
+      - ./config:/config
+      - ../custom_components/yandex_quasar:/config/custom_components/yandex_quasar:ro
+    environment:
+      TZ: Europe/Madrid
+    restart: unless-stopped
+  whisper:
+    image: rhasspy/wyoming-whisper:latest
+    command: --model medium-int8 --language ru
+    volumes: ["./whisper-data:/data"]
+    restart: unless-stopped
+  piper:
+    image: rhasspy/wyoming-piper:latest
+    command: --voice ru_RU-dmitri-medium
+    volumes: ["./piper-data:/data"]
+    restart: unless-stopped

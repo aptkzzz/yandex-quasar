@@ -1,0 +1,130 @@
+"""Central registry: stations, their uniproxy sessions and connected Home Assistant clients."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import functools
+import logging
+import socket
+import struct
+from typing import TYPE_CHECKING, Any
+
+import aiohttp
+
+from .config import Config
+from .station import Station
+
+if TYPE_CHECKING:
+    from .ha_api import HAClient
+    from .session import StationSession
+
+_LOGGER = logging.getLogger(__name__)
+
+AUDIO_KIND_MIC_PCM = 0x01
+
+
+class Hub:
+    def __init__(self, config: Config, adapter_id: str) -> None:
+        self.config = config
+        self.adapter_id = adapter_id
+        self.stations: dict[str, Station] = {}
+        self.sessions: dict[str, StationSession] = {}
+        self.ha_clients: set[HAClient] = set()
+        self.http: aiohttp.ClientSession | None = None
+        self._tasks: set[asyncio.Task] = set()
+        self._registry_path = config.data_dir / "stations.json"
+        self._load_registry()
+
+    @functools.cached_property
+    def local_ip(self) -> str:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("192.0.2.1", 9))  # no packets are sent for UDP connect
+            return sock.getsockname()[0]
+
+    async def start(self) -> None:
+        self.http = aiohttp.ClientSession()
+
+    async def stop(self) -> None:
+        for session in list(self.sessions.values()):
+            await session.close()
+        if self.http:
+            await self.http.close()
+
+    def track(self, task: asyncio.Task) -> None:
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    # ---- stations -------------------------------------------------------------------------------------------
+
+    def _load_registry(self) -> None:
+        if not self._registry_path.exists():
+            return
+        for item in json.loads(self._registry_path.read_text(encoding="utf-8")):
+            self.stations[item["device_id"]] = Station(
+                device_id=item["device_id"], platform=item.get("platform", ""),
+                firmware=item.get("firmware", ""), name=item.get("name", ""),
+                wake_word=item.get("wake_word", "alisa"),
+            )
+
+    def save_registry(self) -> None:
+        data = [
+            {"device_id": s.device_id, "platform": s.platform, "firmware": s.firmware, "name": s.name,
+             "wake_word": s.wake_word}
+            for s in self.stations.values()
+        ]
+        self._registry_path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    def station_connected(self, session: StationSession, platform: str, firmware: str, ip: str | None) -> Station:
+        station = session.station
+        is_new = station.device_id not in self.stations
+        station.platform = platform or station.platform
+        station.firmware = firmware or station.firmware
+        override = self.config.stations.get(station.device_id)
+        if override and override.name:
+            station.name = override.name
+        station.state.connection = "online"
+        station.state.ip = ip
+        self.stations[station.device_id] = station
+        old = self.sessions.get(station.device_id)
+        self.sessions[station.device_id] = session
+        if old is not None and old is not session:
+            self.track(asyncio.create_task(old.ws.close()))
+        self.save_registry()
+        if is_new:
+            self.emit(station, "station.added", station.info())
+        self.emit_state(station)
+        return station
+
+    def station_disconnected(self, session: StationSession) -> None:
+        station = session.station
+        if self.sessions.get(station.device_id) is not session:
+            return  # replaced by a newer connection
+        del self.sessions[station.device_id]
+        station.state.connection = "offline"
+        station.state.alice_state = "idle"
+        self.emit_state(station)
+
+    def get_station(self, device_id: str) -> Station:
+        station = self.stations.get(device_id)
+        if station is None:
+            station = Station(device_id=device_id)
+        return station
+
+    # ---- HA side --------------------------------------------------------------------------------------------
+
+    def has_ha_clients(self) -> bool:
+        return bool(self.ha_clients)
+
+    def emit(self, station: Station, type_: str, data: dict[str, Any]) -> None:
+        message = {"type": type_, "station": station.device_id, "data": data}
+        for client in list(self.ha_clients):
+            client.send_json_nowait(message)
+
+    def emit_state(self, station: Station) -> None:
+        self.emit(station, "station.state", station.state.as_dict())
+
+    def emit_audio(self, turn_seq: int, pcm: bytes) -> None:
+        frame = struct.pack(">BI", AUDIO_KIND_MIC_PCM, turn_seq) + pcm
+        for client in list(self.ha_clients):
+            client.send_bytes_nowait(frame)
