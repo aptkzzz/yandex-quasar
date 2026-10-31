@@ -8,7 +8,6 @@ arch:
   - amd64
 init: false
 startup: services
-boot: auto
 # Stations connect directly (ws://<host>:<port>/uni.ws) and the adapter announces itself via mDNS.
 host_network: true
 # /config inside the app = /addon_configs/<slug> on the host: seed files captured from the station.

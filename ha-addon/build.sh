@@ -6,7 +6,7 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 STAGE="$ROOT/ha-addon/.build/quasar_adapter"
 rm -rf "$STAGE" && mkdir -p "$STAGE/adapter"
-for f in config.yaml build.yaml Dockerfile run.sh DOCS.md translations; do
+for f in config.yaml build.yaml Dockerfile run.sh DOCS.md translations icon.png logo.png; do
     cp -R "$ROOT/ha-addon/$f" "$STAGE/"
 done
 cp "$ROOT/adapter/pyproject.toml" "$STAGE/adapter/"
