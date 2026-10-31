@@ -114,7 +114,12 @@ class StationSession:
         if self._closed or self.ws.closed:
             return
         async with self._send_lock:
-            await self.ws.send_bytes(data)
+            try:
+                await self.ws.send_bytes(data)
+            except ConnectionResetError:
+                # The station dropped the socket (network glitch, maind restart): the session ends anyway.
+                _LOGGER.debug("[%s] send on closing connection dropped", self.station.device_id)
+                self._closed = True
 
     def _spawn(self, turn: Turn | None, coro: Awaitable, name: str) -> asyncio.Task:
         task = asyncio.create_task(coro, name=name)
