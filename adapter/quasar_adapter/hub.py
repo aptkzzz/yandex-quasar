@@ -14,6 +14,7 @@ import aiohttp
 
 from .config import Config
 from .glagol import GlagolClient
+from .sendspin import SendspinPlayer
 from .station import Station
 
 if TYPE_CHECKING:
@@ -36,6 +37,7 @@ class Hub:
         self.http: aiohttp.ClientSession | None = None
         self.backend: Backend | None = None  # set by build_app; signs glagol tokens
         self.glagol: dict[str, GlagolClient] = {}
+        self.sendspin: dict[str, SendspinPlayer] = {}
         self._tasks: set[asyncio.Task] = set()
         self._registry_path = config.data_dir / "stations.json"
         self._load_registry()
@@ -50,6 +52,8 @@ class Hub:
         self.http = aiohttp.ClientSession()
 
     async def stop(self) -> None:
+        for player in list(self.sendspin.values()):
+            await player.stop()
         for client in list(self.glagol.values()):
             await client.stop()
         for session in list(self.sessions.values()):
@@ -104,7 +108,19 @@ class Hub:
             # Live state (volume buttons) that uniproxy never pushes; follows station.state.ip on reconnects.
             self.glagol[station.device_id] = GlagolClient(self, station)
             self.glagol[station.device_id].start()
+        if self.config.sendspin_enabled and station.device_id not in self.sendspin:
+            port = self.config.sendspin_port + sorted(self.stations).index(station.device_id)
+            player = SendspinPlayer(self, station, port)
+            self.sendspin[station.device_id] = player
+            self.track(asyncio.create_task(self._start_sendspin(player)))
         return station
+
+    async def _start_sendspin(self, player: SendspinPlayer) -> None:
+        try:
+            await player.start()
+        except Exception:
+            _LOGGER.exception("[%s] Sendspin player failed to start", player.station.device_id)
+            self.sendspin.pop(player.station.device_id, None)
 
     def station_disconnected(self, session: StationSession) -> None:
         station = session.station
@@ -133,6 +149,8 @@ class Hub:
 
     def emit_state(self, station: Station) -> None:
         self.emit(station, "station.state", station.state.as_dict())
+        if (player := self.sendspin.get(station.device_id)) is not None:
+            player.on_station_state()
 
     def emit_audio(self, turn_seq: int, pcm: bytes) -> None:
         frame = struct.pack(">BI", AUDIO_KIND_MIC_PCM, turn_seq) + pcm

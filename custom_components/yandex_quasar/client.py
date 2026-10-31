@@ -71,6 +71,7 @@ class AdapterClient:
         self._state_listeners: dict[str, list[StateListener]] = {}
         self._event_listeners: dict[str, list[EventListener]] = {}
         self._audio_handlers: dict[int, AudioHandler] = {}
+        self._global_listeners: list[Callable[[str, str, dict[str, Any]], None]] = []
 
     # ---- lifecycle ------------------------------------------------------------------------------------------
 
@@ -185,6 +186,8 @@ class AdapterClient:
             for listener in list(self._state_listeners.get(station, [])):
                 listener()
             return
+        for global_listener in list(self._global_listeners):
+            global_listener(station, kind, data)
         for listener in list(self._event_listeners.get(station, [])):
             listener(kind, data)
 
@@ -228,6 +231,12 @@ class AdapterClient:
     def subscribe_added(self, listener: Callable[[str], None]) -> Callable[[], None]:
         self._added_listeners.append(listener)
         return lambda: self._added_listeners.remove(listener)
+
+    @callback
+    def subscribe_all_events(self, listener: Callable[[str, str, dict[str, Any]], None]) -> Callable[[], None]:
+        """Events of every station: listener(station_id, type, data)."""
+        self._global_listeners.append(listener)
+        return lambda: self._global_listeners.remove(listener)
 
     @callback
     def subscribe_state(self, station: str, listener: StateListener) -> Callable[[], None]:

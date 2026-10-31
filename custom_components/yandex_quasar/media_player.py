@@ -50,6 +50,8 @@ class YandexQuasarMediaPlayer(YandexQuasarEntity, MediaPlayerEntity):
         | MediaPlayerEntityFeature.PLAY
         | MediaPlayerEntityFeature.PAUSE
         | MediaPlayerEntityFeature.STOP
+        | MediaPlayerEntityFeature.NEXT_TRACK
+        | MediaPlayerEntityFeature.PREVIOUS_TRACK
         | MediaPlayerEntityFeature.SEEK
         | MediaPlayerEntityFeature.VOLUME_SET
         | MediaPlayerEntityFeature.VOLUME_STEP
@@ -150,6 +152,13 @@ class YandexQuasarMediaPlayer(YandexQuasarEntity, MediaPlayerEntity):
 
     async def async_media_stop(self) -> None:
         await self._request("media.stop")
+
+    async def async_media_next_track(self) -> None:
+        # Works while Music Assistant streams over Sendspin (its queue); plain URLs have no next track.
+        await self._request("media.next")
+
+    async def async_media_previous_track(self) -> None:
+        await self._request("media.previous")
 
     async def async_media_seek(self, position: float) -> None:
         await self._request("media.seek", {"position": position})

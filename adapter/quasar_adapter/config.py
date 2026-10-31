@@ -44,6 +44,9 @@ class Config:
     glagol_accept_any: bool = True
     # Connect to the station's local glagol socket for live state (volume changed by buttons).
     glagol_client: bool = True
+    # Music Assistant player over Sendspin: one listener per station starting at this port (mDNS _sendspin._tcp).
+    sendspin_enabled: bool = True
+    sendspin_port: int = 8928
     # Yandex account uid reported in OAuth responses (X-UPRX-UID of the station); optional.
     account_uid: str = ""
     # Debug: save raw bodies of set_device_capability and rpc gproxy reports here.

@@ -59,6 +59,13 @@ async def handle_uniproxy(request: web.Request) -> web.StreamResponse:
 
 
 
+async def handle_sendspin_stream(request: web.Request) -> web.StreamResponse:
+    player = request.app[HUB_KEY].sendspin.get(request.match_info["device_id"])
+    if player is None:
+        raise web.HTTPNotFound()
+    return await player.serve(request, request.match_info["token"])
+
+
 async def _zeroconf_ctx(app: web.Application):
     cfg: Config = app[CONFIG_KEY]
     hub: Hub = app[HUB_KEY]
@@ -97,6 +104,7 @@ def build_app(cfg: Config, *, zeroconf: bool = True) -> web.Application:
     app.router.add_get("/uni.ws", handle_uniproxy)
     app.router.add_get("/{host}/uni.ws", handle_uniproxy)
     app.router.add_get("/ha", HAApi(hub).handle)
+    app.router.add_get("/sendspin/{device_id}/{token}.mp3", handle_sendspin_stream)
     # Everything else is the Yandex cloud HTTP API the station expects (quasar backend, oauth, metrics).
     hub.backend = Backend(hub)
     app.router.add_route("*", "/{tail:.*}", hub.backend.handle)

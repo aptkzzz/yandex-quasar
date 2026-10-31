@@ -6,12 +6,13 @@ from dataclasses import dataclass
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT, Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.components import persistent_notification
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .client import AdapterAuthError, AdapterClient, AdapterConnectionError
-from .const import CONF_TOKEN
+from .const import CONF_TOKEN, DOMAIN
 
 PLATFORMS = [Platform.ASSIST_SATELLITE, Platform.MEDIA_PLAYER, Platform.SELECT, Platform.SENSOR]
 
@@ -37,9 +38,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: YandexQuasarConfigEntry)
 
     entry.runtime_data = YandexQuasarData(client)
     client.start(lambda coro, name: entry.async_create_background_task(hass, coro, name))
+    entry.async_on_unload(client.subscribe_all_events(_pairing_notifier(hass, client)))
     entry.async_on_unload(client.close)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+def _pairing_notifier(hass: HomeAssistant, client: AdapterClient):
+    """Show the Sendspin pairing code Music Assistant asks for (a new one per attempt)."""
+
+    @callback
+    def handle(station: str, kind: str, data: dict) -> None:
+        if kind != "sendspin.pairing_code":
+            return
+        notification_id = f"{DOMAIN}_sendspin_pairing_{station}"
+        if code := data.get("code"):
+            name = client.stations.get(station, {}).get("name", station)
+            persistent_notification.async_create(
+                hass,
+                f"Music Assistant запрашивает PIN для плеера **{name}**.\n\nВведите код: **{code}**",
+                title="Сопряжение Sendspin",
+                notification_id=notification_id,
+            )
+        else:
+            persistent_notification.async_dismiss(hass, notification_id)
+
+    return handle
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: YandexQuasarConfigEntry) -> bool:

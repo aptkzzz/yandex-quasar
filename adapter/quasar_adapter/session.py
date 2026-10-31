@@ -485,8 +485,33 @@ class StationSession:
     async def _push(self, *directives: dict) -> None:
         await self._send(aapi.push(list(directives)))
 
+    async def play_stream(self, url: str, metadata: dict, source: str) -> None:
+        """Play an adapter-served live stream (Sendspin bridge); our own URL needs no redirect probing."""
+        await self._cmd_media_play({"url": url, "metadata": metadata, "resolve": False, "source": source})
+
+    async def stop_stream(self) -> None:
+        await self._push(aapi.directive("player_pause", {"smooth": True}))
+        player = self.station.state.player
+        player.state = "idle"
+        player.stream_id = None
+        self.hub.emit_state(self.station)
+
+    async def _route_to_sendspin(self, name: str) -> bool:
+        """While Music Assistant streams over Sendspin, playback control belongs to MA's queue."""
+        sendspin = self.hub.sendspin.get(self.station.device_id)
+        if sendspin is None or self.station.state.player.source != "sendspin":
+            return False
+        try:
+            await sendspin.group_command(name)
+        except (RuntimeError, ValueError) as err:
+            raise CommandError("sendspin", str(err)) from err
+        return True
+
     async def _cmd_media_play(self, data: dict) -> dict:
-        url, is_stream = await resolve_media_url(self.hub.http, data["url"])
+        if data.get("resolve", True):
+            url, is_stream = await resolve_media_url(self.hub.http, data["url"])
+        else:
+            url, is_stream = data["url"], True
         meta = data.get("metadata") or {}
         offset = float(data.get("offset") or 0)
         stream_id = str(uuid.uuid4())
@@ -514,6 +539,7 @@ class StationSession:
         player = self.station.state.player
         player.state = "buffering"
         player.url = data["url"]
+        player.source = data.get("source")
         player.stream_id = stream_id
         player.title = meta.get("title")
         player.artist = meta.get("artist")
@@ -531,12 +557,23 @@ class StationSession:
             return  # callback of a replaced track
         if event == "started":
             player.state = "playing"
+        elif event == "stopped" and player.source == "sendspin":
+            # Stops we initiate clear stream_id first, so this is the station itself (local "пауза" fast command):
+            # pause Music Assistant's queue too, otherwise MA keeps "playing" into a dead stream.
+            player.state = "paused"
+            self._spawn(None, self._pause_sendspin_queue(), "sendspin-pause")
         elif event in ("stopped", "finished") and player.state != "paused":
             player.state = "idle"
         elif event == "failed":
             player.state = "idle"
         self.hub.emit(self.station, "media.event", {"event": event, "url": player.url})
         self.hub.emit_state(self.station)
+
+    async def _pause_sendspin_queue(self) -> None:
+        try:
+            await self._route_to_sendspin("pause")
+        except CommandError as err:
+            _LOGGER.warning("[%s] could not pause Music Assistant: %s", self.station.device_id, err)
 
     def _current_position(self) -> float:
         player = self.station.state.player
@@ -545,6 +582,8 @@ class StationSession:
         return player.position
 
     async def _cmd_media_pause(self, data: dict) -> dict:
+        if await self._route_to_sendspin("pause"):
+            return {}
         player = self.station.state.player
         position = self._current_position()
         await self._push(aapi.directive("player_pause", {"smooth": True}))
@@ -556,6 +595,8 @@ class StationSession:
 
     async def _cmd_media_resume(self, data: dict) -> dict:
         # player_continue does not work for audio_play on this firmware: restart the URL at the saved position.
+        if await self._route_to_sendspin("resume"):
+            return {}
         player = self.station.state.player
         if not player.url:
             raise CommandError("nothing_to_resume")
@@ -567,14 +608,27 @@ class StationSession:
         })
 
     async def _cmd_media_stop(self, data: dict) -> dict:
+        if await self._route_to_sendspin("stop"):
+            return {}
         await self._push(aapi.directive("player_pause", {"smooth": False}))
         player = self.station.state.player
         player.state = "idle"
         player.url = None
+        player.source = None
         player.stream_id = None
         player.position = 0.0
         self.hub.emit_state(self.station)
         return {}
+
+    async def _cmd_media_next(self, data: dict) -> dict:
+        if await self._route_to_sendspin("next"):
+            return {}
+        raise CommandError("not_supported", "next track needs a queue (Music Assistant over Sendspin)")
+
+    async def _cmd_media_previous(self, data: dict) -> dict:
+        if await self._route_to_sendspin("previous"):
+            return {}
+        raise CommandError("not_supported", "previous track needs a queue (Music Assistant over Sendspin)")
 
     async def _cmd_media_seek(self, data: dict) -> dict:
         player = self.station.state.player

@@ -30,6 +30,7 @@ PLAYER_STATES = {
 class PlayerState:
     state: str = "idle"  # idle | playing | paused | buffering
     url: str | None = None
+    source: str | None = None  # "sendspin" while Music Assistant streams to the station
     stream_id: str | None = None
     title: str | None = None
     artist: str | None = None
