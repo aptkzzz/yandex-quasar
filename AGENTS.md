@@ -24,6 +24,15 @@
 - [docs/roadmap.md](docs/roadmap.md) — этапы, риски, открытые вопросы
 - [docs/references.md](docs/references.md) — источники
 
+## Репозиторий и релизы
+
+- GitHub: `git@github.com:darkdarin/yandex-quasar.git` (push по SSH-ключу этого Mac, аккаунт `darkdarin`;
+  `gh` на машине авторизован под другим, рабочим аккаунтом — для настроек репозитория не годится).
+- Один репозиторий — два канала: HACS (`custom_components/`, `hacs.json`) и магазин HA apps (`repository.yaml` +
+  `ha-addon/`). Опубликованный app собирает адаптер из тега `v<version>`.
+- Релиз: поднять версию в 4 местах (см. [ha-addon/README.md](ha-addon/README.md#release-checklist)), коммит,
+  тег `v<version>`, push тега. CI: `.github/workflows/adapter.yml` (pytest), `validate.yml` (hassfest, HACS, app lint).
+
 ## Рабочее окружение
 
 Разработка ведётся на **живом HA** владельца, тестовый `ha-dev/` выключен.
