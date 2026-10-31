@@ -119,6 +119,21 @@ async def test_pipeline_error_plays_station_sound(station, ha):
     assert sound.SoundToPlay == aapi._AudioFilePlayer.EStoredSound.Value("SpotterCancel")
 
 
+async def test_silent_ha_times_out_with_error_sound(adapter, station, ha):
+    server, _http = adapter
+    from quasar_adapter.server import HUB_KEY
+
+    server.app[HUB_KEY].config.ha_response_timeout = 0.5
+    turn_id = await _voice_until_recognized(station, ha, "voice-slow")
+    assert (await ha.request("voice.stt_end", DEVICE_ID, {"turn_id": turn_id, "text": "включи рок"}))["ok"]
+    assert (await station.expect_event("AsrResult")).Event.AsrResult.EndOfUtt
+    await station.recv()  # mic stream close
+    resp = await station.expect_event("AliceResponse", timeout=3)
+    assert [d.Name for d in resp.Event.AliceResponse.Response.Directives] == ["local_audio_file_play"]
+    late = await ha.request("voice.respond", DEVICE_ID, {"turn_id": turn_id, "text": "Включаю"})
+    assert late["error"]["code"] == "turn_closed"
+
+
 async def test_station_cancel(station, ha):
     turn_id = await _voice_until_recognized(station, ha)
     await station.send(station.stream_control(1, "Close", aapi.CLOSE_CANCEL))

@@ -355,6 +355,17 @@ class StationSession:
         await self._send(aapi.asr_result(turn.message_id, text, end_of_utt=True))
         await self._send(aapi.stream_close(turn.mic_stream_id))
         self._set_alice_state("thinking")
+        self._spawn(turn, self._response_timeout(turn), "response-timeout")
+
+    async def _response_timeout(self, turn: Turn) -> None:
+        # The station waits vinsRequestTimeout (raised via get_sync_info) for an answer; close the turn just before it
+        # so the user hears our short error sound instead of the station's "something went wrong" phrase. The HA
+        # pipeline keeps running, so a slow action (e.g. an LLM starting music) still happens.
+        await asyncio.sleep(self.cfg.ha_response_timeout)
+        if turn.phase == "recognized":
+            _LOGGER.warning("[%s] turn %s: no answer from Home Assistant in %.0f s", self.station.device_id,
+                            turn.turn_id, self.cfg.ha_response_timeout)
+            await self._respond_empty(turn, self._error_sound())
 
     async def _respond_empty(self, turn: Turn, directives: list[dict] | None = None) -> None:
         await self._end_recognition(turn, "")

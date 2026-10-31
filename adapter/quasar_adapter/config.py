@@ -35,7 +35,10 @@ class Config:
     playback_grace: float = 2.0
     # Station sound (EStoredSound name) played when the HA pipeline fails; empty disables it.
     error_sound: str = "SpotterCancel"
-    ha_response_timeout: float = 30.0
+    # Our cut-off for an HA answer after recognition; keep below vins_request_timeout_ms.
+    ha_response_timeout: float = 55.0
+    # Station's own wait for an answer (default 15 s in firmware), raised via get_sync_info for slow LLM agents.
+    vins_request_timeout_ms: int = 60000
     ffmpeg: str = "ffmpeg"
     log_traffic: bool = False
     # Backend emulation: directory with seed files captured from the station (sync_info_base.json, devices.json).

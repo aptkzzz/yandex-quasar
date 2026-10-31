@@ -157,6 +157,9 @@ class Backend:
         system = config.setdefault("system_config", {})
         system["uniProxyUrl"] = self.uniproxy_url()
         system["onlineSpotterEnabled"] = False
+        # LLM agents with tools (e.g. Music Assistant search) often need >15 s, the firmware default.
+        system["vinsRequestTimeout"] = self.cfg.vins_request_timeout_ms
+        system.setdefault("voiceDialogSettings", {})["vinsRequestTimeout"] = self.cfg.vins_request_timeout_ms
         updater = system.setdefault("com.yandex.launcher.updaterapp", {}).setdefault("settings", {})
         updater["allowFirmwareUpdate"] = {"ota": False}
         updater["allowFirmwareUpdateV2"] = {"ota": False}
