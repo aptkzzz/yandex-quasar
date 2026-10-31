@@ -103,3 +103,36 @@ class YandexQuasarSatellite(YandexQuasarEntity, AssistSatelliteEntity):
 - `quality_scale.yaml` как ориентир: Bronze + Silver обязательно, Gold по мере сил.
 - Тесты: `pytest-homeassistant-custom-component`, фейковый адаптер (aiohttp WS-сервер в фикстуре).
   Сценарии: config flow, голосовой ход (STT → respond), announce, play_media, потеря связи.
+
+## 7. Быстрые медиакоманды голосом (рекомендуется)
+
+Встроенные русские фразы HA не покрывают короткие «продолжи», «дальше», «назад», и такие команды уходят в LLM
+с многословными ответами. Пользовательские фразы срабатывают раньше LLM (`prefer_local_intents`), молча и
+применяются к плеерам в комнате станции, поэтому устройство станции надо привязать к зоне.
+`/config/custom_sentences/ru/media_quick.yaml`:
+
+```yaml
+language: "ru"
+intents:
+  HassMediaPause:
+    data:
+      - sentences: ["пауза", "на паузу", "поставь на паузу", "останови музыку"]
+  HassMediaUnpause:
+    data:
+      - sentences: ["продолжи", "продолжим", "продолжай", "играй дальше", "продолжи музыку", "возобнови", "сними с паузы"]
+  HassMediaNext:
+    data:
+      - sentences: ["дальше", "следующий", "следующий трек", "следующая песня", "переключи трек"]
+  HassMediaPrevious:
+    data:
+      - sentences: ["назад", "предыдущий", "предыдущий трек", "предыдущая песня"]
+responses:
+  intents:
+    HassMediaPause: {default: ""}
+    HassMediaUnpause: {default: ""}
+    HassMediaNext: {default: ""}
+    HassMediaPrevious: {default: ""}
+```
+
+У `media_player` интеграции нет «следующий/предыдущий»: при игре из Music Assistant (Sendspin) очередью управляет
+плеер MA. Если бы эти команды были и у нашей сущности, интент на всю комнату пропускал бы два трека.

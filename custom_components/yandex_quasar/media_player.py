@@ -42,6 +42,9 @@ async def async_setup_entry(
 
 
 class YandexQuasarMediaPlayer(YandexQuasarEntity, MediaPlayerEntity):
+    """Raw station player. No next/previous: with Music Assistant (Sendspin) its own player entity owns the queue,
+    and offering them here too makes area-wide voice intents skip twice."""
+
     _attr_translation_key = "player"
     _attr_device_class = MediaPlayerDeviceClass.SPEAKER
     _attr_media_content_type = MediaType.MUSIC
@@ -50,8 +53,6 @@ class YandexQuasarMediaPlayer(YandexQuasarEntity, MediaPlayerEntity):
         | MediaPlayerEntityFeature.PLAY
         | MediaPlayerEntityFeature.PAUSE
         | MediaPlayerEntityFeature.STOP
-        | MediaPlayerEntityFeature.NEXT_TRACK
-        | MediaPlayerEntityFeature.PREVIOUS_TRACK
         | MediaPlayerEntityFeature.SEEK
         | MediaPlayerEntityFeature.VOLUME_SET
         | MediaPlayerEntityFeature.VOLUME_STEP
@@ -152,13 +153,6 @@ class YandexQuasarMediaPlayer(YandexQuasarEntity, MediaPlayerEntity):
 
     async def async_media_stop(self) -> None:
         await self._request("media.stop")
-
-    async def async_media_next_track(self) -> None:
-        # Works while Music Assistant streams over Sendspin (its queue); plain URLs have no next track.
-        await self._request("media.next")
-
-    async def async_media_previous_track(self) -> None:
-        await self._request("media.previous")
 
     async def async_media_seek(self, position: float) -> None:
         await self._request("media.seek", {"position": position})
