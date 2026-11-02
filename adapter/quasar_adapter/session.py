@@ -693,14 +693,32 @@ class StationSession:
         _LOGGER.info("[%s] wake word set to %s", self.station.device_id, wake_word)
         return self.station.info()
 
-    async def _cmd_debug_timer(self, data: dict) -> dict:
-        """Experiments: {"action": "set", "timer_id", "duration", "title"} | {"action": cancel|pause|resume|stop}."""
-        if data["action"] == "set":
-            spec = aapi.timer_set(data["timer_id"], int(data["duration"]), title=data.get("title", ""))
-        else:
-            spec = aapi.timer_action(data["action"], data["timer_id"])
+    # Native station timers: the station shows the countdown and rings by itself; it reports nothing back.
+    async def _cmd_timer_set(self, data: dict) -> dict:
+        try:
+            spec = aapi.timer_set(str(data["timer_id"]), int(data["duration"]), title=data.get("title") or "")
+        except (KeyError, TypeError, ValueError) as err:
+            raise CommandError("invalid", f"bad timer: {err}") from err
         await self._push(spec)
         return {}
+
+    async def _timer_action(self, action: str, data: dict) -> dict:
+        if not data.get("timer_id"):
+            raise CommandError("invalid", "timer_id is required")
+        await self._push(aapi.timer_action(action, str(data["timer_id"])))
+        return {}
+
+    async def _cmd_timer_cancel(self, data: dict) -> dict:
+        return await self._timer_action("cancel", data)
+
+    async def _cmd_timer_pause(self, data: dict) -> dict:
+        return await self._timer_action("pause", data)
+
+    async def _cmd_timer_resume(self, data: dict) -> dict:
+        return await self._timer_action("resume", data)
+
+    async def _cmd_timer_stop(self, data: dict) -> dict:
+        return await self._timer_action("stop", data)
 
     async def _cmd_debug_sound(self, data: dict) -> dict:
         """Experiments: play a stored station sound by EStoredSound name."""

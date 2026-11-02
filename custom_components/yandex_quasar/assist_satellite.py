@@ -64,6 +64,7 @@ class YandexQuasarSatellite(YandexQuasarEntity, AssistSatelliteEntity):
         self._response_text = ""
         self._continue_conversation = False
         self._announcements: dict[str, asyncio.Future[dict]] = {}
+        self._native_timers: set[str] = set()  # HA timer ids mirrored on the station
 
     # ---- select entities ------------------------------------------------------------------------------------
 
@@ -114,14 +115,42 @@ class YandexQuasarSatellite(YandexQuasarEntity, AssistSatelliteEntity):
 
     @callback
     def _handle_timer(self, event_type: TimerEventType, timer: TimerInfo) -> None:
-        if event_type is not TimerEventType.FINISHED:
-            return
-        message = f"Таймер {timer.name} закончился" if timer.name else "Таймер закончился"
         self._entry.async_create_background_task(
-            self.hass, self._announce_timer(message), f"{self.entity_id} timer finished"
+            self.hass, self._sync_timer(event_type, timer), f"{self.entity_id} timer {event_type.value}"
         )
 
-    async def _announce_timer(self, message: str) -> None:
+    async def _sync_timer(self, event_type: TimerEventType, timer: TimerInfo) -> None:
+        """Mirror HA timers to native station timers: the station shows the countdown and rings by itself."""
+        native = timer.id in self._native_timers
+        try:
+            if event_type is TimerEventType.STARTED:
+                await self._set_native_timer(timer)
+            elif event_type is TimerEventType.UPDATED and native:
+                # Time added/removed or paused/resumed: re-create with the remaining time, then pause if needed.
+                await self._client.request("timer.cancel", self._device_id, {"timer_id": timer.id})
+                await self._set_native_timer(timer)
+                if not timer.is_active:
+                    await self._client.request("timer.pause", self._device_id, {"timer_id": timer.id})
+            elif event_type is TimerEventType.CANCELLED and native:
+                self._native_timers.discard(timer.id)
+                await self._client.request("timer.cancel", self._device_id, {"timer_id": timer.id})
+            elif event_type is TimerEventType.FINISHED:
+                self._native_timers.discard(timer.id)
+                if not native:
+                    await self._announce_timer(timer)
+        except AdapterError as err:
+            _LOGGER.warning("Could not sync timer %s (%s) to the station: %s", timer.id, event_type.value, err)
+
+    async def _set_native_timer(self, timer: TimerInfo) -> None:
+        self._native_timers.discard(timer.id)
+        await self._client.request("timer.set", self._device_id, {
+            "timer_id": timer.id, "duration": max(1, timer.seconds_left), "title": timer.name or "",
+        })
+        self._native_timers.add(timer.id)
+
+    async def _announce_timer(self, timer: TimerInfo) -> None:
+        """Fallback for timers the station did not get (offline when the timer started)."""
+        message = f"Таймер {timer.name} закончился" if timer.name else "Таймер закончился"
         try:
             await self.async_internal_announce(message=message)
         except HomeAssistantError as err:

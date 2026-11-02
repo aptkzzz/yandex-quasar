@@ -91,6 +91,17 @@ A  → {"type":"result","id":1,"ok":true,"data":{"adapter_id":"…","version":"0
 | `volume.step` | `{direction: "up"\|"down"}` |
 | `volume.mute` | `{muted: bool}` |
 
+### Таймеры
+
+Нативные таймеры станции: обратный отсчёт на часах, свой звонок, «Алиса, стоп» гасит звонок локально.
+Станция ничего не сообщает о срабатывании, поэтому источник правды — таймеры HA, адаптер только зеркалит их.
+
+| type | data | Директива станции |
+|---|---|---|
+| `timer.set` | `{timer_id, duration: seconds, title?}` | `timer_set_directive` (отсчёт от текущего времени) |
+| `timer.cancel` / `timer.pause` / `timer.resume` | `{timer_id}` | `timer_{cancel,pause,resume}_directive` |
+| `timer.stop` | `{timer_id}` | `timer_stop_directive` — заглушить звонящий таймер |
+
 ### Этап 4
 
 | type | data |

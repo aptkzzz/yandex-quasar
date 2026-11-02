@@ -230,6 +230,20 @@ async def test_wake_word_switch(adapter, station, ha):
     assert bad["error"]["code"] == "invalid"
 
 
+async def test_native_timer(station, ha):
+    assert (await ha.request("timer.set", DEVICE_ID, {"timer_id": "t1", "duration": 300, "title": "чай"}))["ok"]
+    d = (await station.expect_event("Push")).Event.Push.Directives[0]
+    assert d.Name == "timer_set_directive" and d.DirectiveType == aapi.TIMER_DIRECTIVE_TYPES["set"]
+    payload = aapi._Alarm.TTimerSetDirective()
+    payload.ParseFromString(d.PayloadRaw)
+    assert (payload.Timer.TimerId, payload.Timer.Duration, payload.Timer.Title) == ("t1", 300, "чай")
+
+    assert (await ha.request("timer.pause", DEVICE_ID, {"timer_id": "t1"}))["ok"]
+    d = (await station.expect_event("Push")).Event.Push.Directives[0]
+    assert d.Name == "timer_pause_directive" and d.DirectiveType == aapi.TIMER_DIRECTIVE_TYPES["pause"]
+    assert (await ha.request("timer.cancel", DEVICE_ID, {}))["error"]["code"] == "invalid"
+
+
 async def test_offline_station(ha):
     reply = await ha.request("media.pause", "NOPE", {})
     assert reply["error"]["code"] == "station_offline"

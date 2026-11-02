@@ -58,7 +58,11 @@ class YandexQuasarSatellite(YandexQuasarEntity, AssistSatelliteEntity):
 | `pipeline_entity_id` / `vad_sensitivity_entity_id` | через entity registry по unique_id `"{device_id}-pipeline"` / `"-vad_sensitivity"` |
 
 Таймер-страховка на `tts_response_finished()`: длительность из ответа адаптера + 2 с.
-`intent.async_register_timer_handler` (таймеры Assist) подключить позже: проиграть звук или LED по `FINISHED`.
+Таймеры Assist (`intent.async_register_timer_handler`) зеркалятся на нативные таймеры станции: `STARTED` →
+`timer.set`, `UPDATED` (добавили время, пауза) → `timer.cancel` + `timer.set` с остатком (+ `timer.pause`),
+`CANCELLED` → `timer.cancel`. На `FINISHED` станция звонит сама. Announce «Таймер закончился» звучит, только если
+таймер не удалось поставить на станцию. Список зеркалированных таймеров живёт в памяти, как и таймеры HA:
+после перезапуска HA станция всё равно отзвонит свои таймеры.
 
 `select.py`: `AssistPipelineSelect(hass, DOMAIN, device_id)` и `VadSensitivitySelect(hass, device_id)` с нашим
 `DeviceInfo`, `entity_category=CONFIG`.

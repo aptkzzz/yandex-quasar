@@ -227,6 +227,19 @@
 - Адаптер сам закрывает ход через `ha_response_timeout` (55 с) коротким звуком ошибки, а пайплайн HA
   доигрывает своё действие.
 
+### Нативные таймеры (2026-11-02)
+
+- `timer_set_directive` (typed, `PayloadRaw` `TTimerSetDirective`, DirectiveType 112) в `Push` принят:
+  `routeDirective … via AlarmCapability`, на часах обратный отсчёт (анимация `timer_countdown`).
+  Pause/resume/cancel (114/115/113) работают: отсчёт пропадает и возвращается.
+- По окончании станция звонит сама (`ring/timer.led`, `clock/ringing.binscled.zst`). «Алиса, стоп» гасит звонок
+  локально (`Call stop timer due to sound stopping not from us` → `local_stack … timer_stop_directive`),
+  а голосовой ход к нам станция тут же отменяет.
+- Таймеры хранятся в `/data/quasar/alarms.dat` и переживают перезагрузку.
+- О срабатывании станция никуда не сообщает: ни событием uniproxy, ни в glagol (там только `aliceState`,
+  `playing`, `volume`, `hdmi`, `canStop`, `timeSinceLastVoiceActivity`). Источник правды — таймеры HA.
+- Произносит ли станция `Title` при звонке — **[проверить]**, в тесте был только сигнал.
+
 ### Прочее
 
 - `/etc/hosts` содержит только localhost. Корень ro, и после правки нужен `mount -o remount,rw /`.

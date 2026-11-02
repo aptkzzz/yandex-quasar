@@ -171,7 +171,12 @@ quasar-protos и вики hackalice.me. Всё, что помечено **[пр�
 | `push_update_config` | — | перечитать `get_sync_info` |
 
 Typed-директивы (таймеры, будильники, DND) передаются только как `PayloadRaw` proto, JSON-вариант прошивка не принимает.
-Таймеры HA обрабатывает сам. Если захочется показывать их на станции, `timer_set_directive` = DirectiveType 112.
+Нативные таймеры (`NAlice.TAlarmCapability`): `timer_set_directive` 112, `timer_cancel_directive` 113,
+`timer_pause_directive` 114, `timer_resume_directive` 115, `timer_stop_directive` 276. В `TTimerSetDirective.Timer`
+заданы `TimerId`, `StartTimestamp` (unix, с), `Duration`, `Remaining`, `Title`. Станция показывает отсчёт на часах и
+звонит сама, о срабатывании не сообщает (см. device-notes). Будильники: add 32, update 34, snooze 116, stop 118,
+cancel 132 (`TAlarmAddDirective.Alarm`: `AlarmId`, `LocalTime`, `ActivationDays`, `Timezone`); билдеры есть в
+`aapi.py`, на станции пока не проверены.
 
 ## 6. Состояние станции
 
