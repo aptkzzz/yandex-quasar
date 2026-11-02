@@ -23,6 +23,7 @@ if str(_PROTO_DIR) not in sys.path:
 from alice.protos.api.alicekit.common.device_state import device_state_pb2  # noqa: E402
 from alice.protos.api.alicekit.protocol.client import client_message_pb2  # noqa: E402
 from alice.protos.api.alicekit.protocol.server import server_message_pb2  # noqa: E402
+from alice.protos.endpoint.capabilities.alarm import capability_pb2 as alarm_capability_pb2  # noqa: E402
 from alice.protos.endpoint.capabilities.audio_file_player import (  # noqa: E402
     capability_pb2 as audio_file_player_pb2,
 )
@@ -180,6 +181,69 @@ def fill_directive(target: Any, spec: dict) -> None:
 
 
 TTS_PLACEHOLDER = directive("tts_play_placeholder", {"channel": "Dialog"}, led_silent=True)
+
+# ---- native timers and alarms (typed directives, NAlice.TAlarmCapability) ----------------------------------------
+
+_Alarm = alarm_capability_pb2.TAlarmCapability
+# NAlice.TCapability.EDirectiveType
+TIMER_DIRECTIVE_TYPES = {"set": 112, "cancel": 113, "pause": 114, "resume": 115, "stop": 276}
+ALARM_DIRECTIVE_TYPES = {"add": 32, "update": 34, "snooze": 116, "stop": 118, "cancel": 132}
+WEEKDAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+
+
+def _typed(name: str, directive_type: int, payload: Any) -> dict:
+    payload.Name = name
+    return directive(name, directive_type=directive_type, payload_raw=payload.SerializeToString())
+
+
+def timer_set(timer_id: str, duration: int, *, title: str = "", start_ts: int | None = None) -> dict:
+    payload = _Alarm.TTimerSetDirective()
+    timer = payload.Timer
+    timer.TimerId = timer_id
+    timer.StartTimestamp = start_ts if start_ts is not None else int(time.time())
+    timer.Duration = duration
+    timer.Remaining = duration
+    timer.Title = title
+    return _typed("timer_set_directive", TIMER_DIRECTIVE_TYPES["set"], payload)
+
+
+def timer_action(action: str, timer_id: str) -> dict:
+    """cancel | pause | resume | stop (stop = silence a ringing timer)."""
+    message = {"cancel": _Alarm.TTimerCancelDirective, "pause": _Alarm.TTimerPauseDirective,
+               "resume": _Alarm.TTimerResumeDirective, "stop": _Alarm.TTimerStopDirective}[action]()
+    message.TimerId = timer_id
+    return _typed(f"timer_{action}_directive", TIMER_DIRECTIVE_TYPES[action], message)
+
+
+def alarm_add(alarm_id: str, hours: int, minutes: int, *, weekdays: list[str] | None = None,
+              date: tuple[int, int, int] | None = None, timezone: str = "", offset_seconds: int = 0,
+              title: str = "") -> dict:
+    payload = _Alarm.TAlarmAddDirective()
+    alarm = payload.Alarm
+    alarm.AlarmId = alarm_id
+    alarm.LocalTime.Hours = hours
+    alarm.LocalTime.Minutes = minutes
+    if timezone:
+        alarm.Timezone.TimezoneName = timezone
+        alarm.Timezone.OffsetSeconds = offset_seconds
+    for day in weekdays or []:
+        alarm.ActivationDays.add().Weekday = WEEKDAYS.index(day) + 1
+    if date is not None:
+        d = alarm.ActivationDays.add().Date
+        d.Year, d.Month, d.Day = date
+    alarm.Title = title
+    alarm.EditTimestamp = int(time.time() * 1000)
+    return _typed("alarm_add_directive", ALARM_DIRECTIVE_TYPES["add"], payload)
+
+
+def alarm_cancel(alarm_id: str) -> dict:
+    payload = _Alarm.TAlarmCancelDirective()
+    payload.AlarmId = alarm_id
+    return _typed("alarm_cancel_directive", ALARM_DIRECTIVE_TYPES["cancel"], payload)
+
+
+def alarm_stop() -> dict:
+    return _typed("alarm_stop_directive", ALARM_DIRECTIVE_TYPES["stop"], _Alarm.TAlarmStopDirective())
 
 LOCAL_AUDIO_FILE_PLAY_TYPE = 47  # NAlice.TCapability.EDirectiveType.LocalAudioFilePlayDirectiveType
 CHANNEL_DIALOG = 1  # NAlice.EDirectiveChannel.Dialog

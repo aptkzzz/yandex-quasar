@@ -693,6 +693,15 @@ class StationSession:
         _LOGGER.info("[%s] wake word set to %s", self.station.device_id, wake_word)
         return self.station.info()
 
+    async def _cmd_debug_timer(self, data: dict) -> dict:
+        """Experiments: {"action": "set", "timer_id", "duration", "title"} | {"action": cancel|pause|resume|stop}."""
+        if data["action"] == "set":
+            spec = aapi.timer_set(data["timer_id"], int(data["duration"]), title=data.get("title", ""))
+        else:
+            spec = aapi.timer_action(data["action"], data["timer_id"])
+        await self._push(spec)
+        return {}
+
     async def _cmd_debug_sound(self, data: dict) -> dict:
         """Experiments: play a stored station sound by EStoredSound name."""
         try:
