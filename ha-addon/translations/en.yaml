@@ -13,7 +13,7 @@ configuration:
     description: Level after gain treated as speech; keeps the station from closing the mic after 5 s.
   spotter_tail_ms:
     name: Wake word tail (ms)
-    description: Audio cut right after the wake word so its ending does not reach STT.
+    description: Longest wake-word ending cut from the start of the command; cut only when a pause follows it.
   glagol_accept_any:
     name: Accept foreign glagol tokens
     description: Keep other local glagol clients (e.g. the yandex_station integration) working.
