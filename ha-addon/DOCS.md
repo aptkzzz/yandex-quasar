@@ -12,3 +12,10 @@ Home Assistant Assist through the **Yandex Station (Quasar Adapter)** custom int
 3. Point the station to the adapter (root required): in `/system/vendor/quasar/quasar.cfg` set
    `"uniProxyUrl" : "ws://<home-assistant-ip>:<port>/uni.ws"` and restart quasar.
    See `docs/station-setup.md` in the repository.
+
+## Options
+
+- `spotter_tail_ms` — the longest wake-word tail ("-sa" of "Alisa") to cut from the start of the command. The leading
+  sound is cut only when a pause follows it, so a command spoken right after the wake word stays intact.
+- `speech_threshold_db` — level (after `mic_gain_db`) that counts as speech; also separates the wake-word tail from
+  the pause after it.

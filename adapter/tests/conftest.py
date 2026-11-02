@@ -162,9 +162,10 @@ class FakeHA:
 
 
 @pytest.fixture
-async def adapter(tmp_path):
+async def adapter(tmp_path, request):
+    overrides = getattr(request, "param", {})  # Config overrides via indirect parametrization
     cfg = Config(data_dir=tmp_path, api_token="secret", preroll_timeout=0.3, partial_interval=0.2, glagol_client=False, sendspin_enabled=False,
-                 max_utterance=5.0, playback_grace=1.0)
+                 max_utterance=5.0, playback_grace=1.0, **overrides)
     server = TestServer(build_app(cfg, zeroconf=False))
     await server.start_server()
     async with aiohttp.ClientSession() as http:

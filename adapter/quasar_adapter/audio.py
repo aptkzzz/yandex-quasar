@@ -132,6 +132,51 @@ def pcm_level_db(pcm: bytes) -> float:
     return 20 * np.log10(rms / 32768 + 1e-9)
 
 
+class SpotterTailTrimmer:
+    """Cuts the end of the wake word from the start of the command audio, but only when a pause follows it.
+
+    Audio after SpotterEnd may begin with the tail of "Алиса" ("-са"), which STT turns into an extra word
+    ("Всё,", "Так,"). A fixed cut also eats the start of a command spoken right after the wake word
+    ("Выключи таймер" -> "И читаемых"), so the leading sound is cut only if it ends within `window_ms`
+    and at least `gap_ms` of silence follows. The cut lands at the end of that silence.
+    """
+
+    FRAME_BYTES = PCM_RATE * 2 // 50  # 20 ms of s16le
+
+    def __init__(self, window_ms: int, threshold_db: float, gap_ms: int = 100) -> None:
+        self._window_frames = window_ms // 20
+        self._gap_frames = max(1, gap_ms // 20)
+        self._threshold_db = threshold_db
+        self._buffer = bytearray()
+        self._frames = 0
+        self._loud_seen = False
+        self._silent_run = 0
+        self.cut_bytes: int | None = None  # decided cut; None while deciding
+
+    def feed(self, pcm: bytes) -> bytes:
+        """Return the audio to forward: nothing while deciding, then everything after the cut."""
+        if self.cut_bytes is not None:
+            return pcm
+        self._buffer += pcm
+        while self.cut_bytes is None and (self._frames + 1) * self.FRAME_BYTES <= len(self._buffer):
+            start = self._frames * self.FRAME_BYTES
+            loud = pcm_level_db(bytes(self._buffer[start:start + self.FRAME_BYTES])) > self._threshold_db
+            self._frames += 1
+            if loud:
+                self._loud_seen, self._silent_run = True, 0
+                if self._frames > self._window_frames:
+                    self.cut_bytes = 0  # speech goes on past the window: it is the command itself
+            else:
+                self._silent_run += 1
+                if self._silent_run >= self._gap_frames:
+                    self.cut_bytes = self._frames * self.FRAME_BYTES if self._loud_seen else 0
+        if self.cut_bytes is None:
+            return b""
+        out = bytes(self._buffer[self.cut_bytes:])
+        self._buffer = bytearray()
+        return out
+
+
 def split_ogg_pages(data: bytes) -> tuple[list[bytes], bytes]:
     """Split a byte buffer into complete Ogg pages; return (pages, remainder)."""
     pages = []

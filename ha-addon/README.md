@@ -12,11 +12,14 @@ the repository installable from the HA app store.
 
 ```sh
 STAGE=$(ha-addon/build.sh)
-tar -C "$(dirname "$STAGE")" -cf - quasar_adapter | ssh ha 'rm -rf /local_apps/quasar_adapter && tar -C /local_apps -xf -'
+COPYFILE_DISABLE=1 tar -C "$(dirname "$STAGE")" -cf - quasar_adapter | ssh ha 'rm -rf /local_apps/quasar_adapter && tar -C /local_apps -xf -'
 ssh ha 'ha store reload && ha apps install local_quasar_adapter'   # first time
 ssh ha 'ha store reload && ha apps update local_quasar_adapter'    # after changes (bump version in config.yaml)
 ssh ha 'ha apps start local_quasar_adapter && ha apps logs local_quasar_adapter'
 ```
+
+`COPYFILE_DISABLE=1` keeps macOS `._*` files out of the archive. Each update needs a new version in `config.yaml`;
+if `ha store reload` times out, retry it — the Supervisor may still be busy with a previous reload.
 
 On the first start the adapter prints a generated API token in the log (or set the `api_token` option).
 Home Assistant discovers the adapter via zeroconf; confirm it with the token.

@@ -49,16 +49,16 @@ async def _voice_until_recognized(station, ha, message_id="voice-1"):
     for page in make_opus(1.0, 600):
         await station.send_audio(1, page)
 
-    # 1 s after SpotterEnd minus the 300 ms wake-word tail the adapter skips.
+    # 1 s after SpotterEnd; continuous sound has no wake-word tail to cut (see test_audio.py).
     pcm = bytearray()
-    while len(pcm) < 16000 * 2 * 0.6:
+    while len(pcm) < 16000 * 2 * 0.9:
         kind, seq, chunk = await asyncio.wait_for(ha.audio.get(), 5)
         assert kind == 1 and seq == start["data"]["turn_seq"]
         pcm += chunk
     await asyncio.sleep(0.3)
     while not ha.audio.empty():
         pcm += (await ha.audio.get())[2]
-    assert len(pcm) <= 16000 * 2 * 0.8, "pre-roll or wake-word tail leaked into HA audio"
+    assert len(pcm) <= 16000 * 2 * 1.05, "pre-roll leaked into HA audio"
     return start["data"]["turn_id"]
 
 

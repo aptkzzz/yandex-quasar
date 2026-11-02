@@ -21,7 +21,7 @@ from aiohttp import web
 from google.protobuf.json_format import MessageToDict
 
 from . import aapi
-from .audio import MicDecoder, OpusTranscoder, pcm_level_db
+from .audio import MicDecoder, OpusTranscoder, SpotterTailTrimmer, pcm_level_db
 from .media import resolve_media_url
 from .station import WAKE_WORDS
 
@@ -61,7 +61,7 @@ class Turn:
     preroll: list[bytes] = field(default_factory=list)
     forwarding: bool = False
     speech_seen: bool = False
-    skip_bytes: int = 0
+    tail_trimmer: SpotterTailTrimmer | None = None
     asr_sent: bool = False
     debug_pcm: bytearray | None = None
     tasks: set[asyncio.Task] = field(default_factory=set)
@@ -210,10 +210,13 @@ class StationSession:
     def _forward(self, turn: Turn, payload: bytes) -> None:
         assert turn.decoder is not None
         pcm = turn.decoder.feed(payload)
-        if turn.skip_bytes and pcm:
-            skipped = min(turn.skip_bytes, len(pcm))
-            turn.skip_bytes -= skipped
-            pcm = pcm[skipped:]
+        if turn.tail_trimmer is not None and pcm:
+            pcm = turn.tail_trimmer.feed(pcm)
+            if turn.tail_trimmer.cut_bytes is not None:
+                if turn.tail_trimmer.cut_bytes:
+                    _LOGGER.debug("[%s] cut %d ms of wake-word tail", self.station.device_id,
+                                  turn.tail_trimmer.cut_bytes // 32)
+                turn.tail_trimmer = None
         if pcm:
             if not turn.speech_seen and pcm_level_db(pcm) > self.cfg.speech_threshold_db:
                 turn.speech_seen = True
@@ -260,7 +263,7 @@ class StationSession:
         if action == "SpotterEnd":
             if turn.phase == "listening" and not turn.forwarding:
                 self._start_forwarding(turn, keep_preroll=False)
-                turn.skip_bytes = self.cfg.spotter_tail_ms * 16 * 2  # 16 kHz s16le
+                turn.tail_trimmer = SpotterTailTrimmer(self.cfg.spotter_tail_ms, self.cfg.speech_threshold_db)
         elif action == "Close" and turn.phase == "listening":
             reason = ctrl.Close.Reason
             _LOGGER.info("[%s] mic closed by station, reason=%s", self.station.device_id, reason)

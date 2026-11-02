@@ -30,7 +30,8 @@ class Config:
     partial_interval: float = 0.5
     max_utterance: float = 15.0
     preroll_timeout: float = 0.5
-    # Audio right after SpotterEnd still contains the end of the wake word ("-са"); STT turns it into "Так,"/"Да,".
+    # Audio right after SpotterEnd may contain the end of the wake word ("-са"); STT turns it into "Так,"/"Да,".
+    # A leading sound ending within this window is cut only when a pause follows (see SpotterTailTrimmer).
     spotter_tail_ms: int = 300
     playback_grace: float = 2.0
     # Station sound (EStoredSound name) played when the HA pipeline fails; empty disables it.
