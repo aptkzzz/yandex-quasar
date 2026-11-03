@@ -25,7 +25,7 @@ On the first start the adapter prints a generated API token in the log (or set t
 Home Assistant discovers the adapter via zeroconf; confirm it with the token.
 
 Seed files for the Yandex backend emulation go to `/addon_configs/local_quasar_adapter/` on the host
-(see `docs/station-setup.md`).
+(see [docs/station-setup.md](../docs/station-setup.md)).
 
 ## Local build check (arm64 like RPi 5)
 

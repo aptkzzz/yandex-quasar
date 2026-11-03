@@ -11,7 +11,7 @@ Home Assistant Assist through the **Yandex Station (Quasar Adapter)** custom int
 2. Home Assistant discovers the adapter via zeroconf; enter the token in the integration dialog.
 3. Point the station to the adapter (root required): in `/system/vendor/quasar/quasar.cfg` set
    `"uniProxyUrl" : "ws://<home-assistant-ip>:<port>/uni.ws"` and restart quasar.
-   See `docs/station-setup.md` in the repository.
+   See [docs/station-setup.md](https://github.com/darkdarin/yandex-quasar/blob/main/docs/station-setup.md).
 
 ## Options
 

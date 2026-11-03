@@ -1,6 +1,6 @@
 """One uniproxy (AAPI) connection of a station: voice turns, server-initiated turns, media control.
 
-Protocol facts this code relies on are documented in docs/device-notes.md and docs/station-protocol.md.
+Protocol facts this code relies on are documented in the project Notion («Заметки об устройствах», «Протокол станции»).
 """
 
 from __future__ import annotations
@@ -530,7 +530,7 @@ class StationSession:
         offset = float(data.get("offset") or 0)
         stream_id = str(uuid.uuid4())
         callbacks = {
-            # Same shape as the phase 0 experiment that is confirmed to come back (docs/device-notes.md).
+            # Same shape as the phase 0 experiment that is confirmed to come back (Notion, «Заметки об устройствах»).
             f"on_{event}": {
                 "name": MEDIA_CALLBACK_PREFIX + event, "type": "server_action", "ignore_answer": True,
                 "payload": {"stream_id": stream_id},

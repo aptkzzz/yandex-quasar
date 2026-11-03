@@ -1,4 +1,4 @@
-"""WebSocket API for the Home Assistant integration (see docs/adapter-ha-api.md)."""
+"""WebSocket API for the Home Assistant integration (see «Протокол Adapter ↔ HA» in the project Notion)."""
 
 from __future__ import annotations
 

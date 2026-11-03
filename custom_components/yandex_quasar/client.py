@@ -1,4 +1,4 @@
-"""WebSocket client for the Quasar Adapter HA API (docs/adapter-ha-api.md)."""
+"""WebSocket client for the Quasar Adapter HA API («Протокол Adapter ↔ HA» in the project Notion)."""
 
 from __future__ import annotations
 

@@ -15,14 +15,18 @@
 
 ## Документация (читать перед работой)
 
-- [docs/README.md](docs/README.md) — оглавление
-- [docs/architecture.md](docs/architecture.md) — архитектурный план и ключевые решения
-- [docs/station-protocol.md](docs/station-protocol.md) — протокол станции (HTTP-бэкенд, uniproxy JSON/AAPI, директивы, glagol)
-- [docs/adapter-ha-api.md](docs/adapter-ha-api.md) — протокол Adapter ↔ HA
-- [docs/ha-integration.md](docs/ha-integration.md) — дизайн HA-интеграции
-- [docs/station-setup.md](docs/station-setup.md) — подготовка и перенаправление станции
-- [docs/roadmap.md](docs/roadmap.md) — этапы, риски, открытые вопросы
-- [docs/references.md](docs/references.md) — источники
+Документация разработки ведётся в **Notion** (workspace `darkdarin`, страница
+[Yandex Quasar](https://app.notion.com/p/40de74ee720f805ab86ae8e7c52488f4)), читать и править её через Notion MCP. В репозитории, в `docs/`, только
+документация для пользователя ([docs/README.md](docs/README.md), [docs/station-setup.md](docs/station-setup.md)).
+
+- [Архитектура](https://app.notion.com/p/40de74ee720f81238003dda9c1c7b20d) — архитектурный план и ключевые решения
+- [Протокол станции](https://app.notion.com/p/40de74ee720f81c2ae54c8a00a0abc54) — HTTP-бэкенд, uniproxy JSON/AAPI, директивы, glagol
+- [Протокол Adapter ↔ HA](https://app.notion.com/p/40de74ee720f81478799c6df712ce45f)
+- [Дизайн HA-интеграции](https://app.notion.com/p/40de74ee720f81e3b826cba549bea65d)
+- [Заметки об устройствах](https://app.notion.com/p/40de74ee720f81a0b48bd8f68f731b56) — что подтверждено на реальных станциях
+- [Станция: исследование и внутренности](https://app.notion.com/p/40de74ee720f81b6b1d0fca6026c86c6) — инвентаризация, DNS + CA, автозапуск агента
+- [Roadmap](https://app.notion.com/p/40de74ee720f8148bcc4f0d15da8b248) — этапы, риски, открытые вопросы
+- [Источники](https://app.notion.com/p/40de74ee720f81b1bf72d97348ac83d8)
 
 ## Репозиторий и релизы
 
@@ -51,10 +55,11 @@
 
 ## Правила
 
-- Документация на русском, идентификаторы, код и комментарии в коде — на английском.
-- Меняешь протокол (станция или Adapter ↔ HA) — обнови соответствующий документ в том же изменении.
-- Находки с реального устройства записывай в `docs/device-notes.md` (модель, прошивка, что подтверждено).
+- Документация на русском, идентификаторы, код и комментарии в коде — на английском. Пользовательская
+  документация (`README.md`, `docs/`, `ha-addon/DOCS.md`) описывает только установку и использование.
+- Меняешь протокол (станция или Adapter ↔ HA) — обнови соответствующую страницу в Notion в том же изменении.
+- Находки с реального устройства записывай в Notion, «Заметки об устройствах» (модель, прошивка, что подтверждено).
   Пометки **[проверить]** в доках снимай, только когда факт подтверждён.
-- Не коммить секреты станции: `devices.json`, glagol-сертификаты, токены, записи трафика с ними.
+- Не коммить и не вставлять в Notion секреты станции: `devices.json`, glagol-сертификаты, токены, записи трафика с ними.
 - Интеграция не тянет внешних зависимостей (`requirements: []`). Общие схемы протокола копируются из адаптера.
 - Код из quasard и quasar-server не копируем без проверки лицензии: протоколы описываем, код пишем свой.

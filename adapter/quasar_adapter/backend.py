@@ -1,6 +1,6 @@
 """Emulation of the Yandex cloud HTTP backends the station talks to (quasar.yandex.net, oauth/passport, metrics, rpc).
 
-Endpoint list comes from the paths compiled into maind 0.369 (see docs/station-protocol.md). Routing is by path suffix,
+Endpoint list comes from the paths compiled into maind 0.369 (see «Протокол станции» in the project Notion). Routing is by path suffix,
 so the station may use any base URL prefix (``http://adapter:8080/quasar``, ``.../oauth`` ...).
 
 Token endpoints echo the station's own access token for the x-token grant, so the real Yandex tokens stored on the
