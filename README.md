@@ -67,11 +67,69 @@ sync; mount -o remount,ro /
 
 Через 1–2 минуты станция подключится. В HA появится устройство станции, сенсор «Статус» покажет «В сети».
 
-Это минимальный вариант: голос идёт через HA, а настройки и обновления станция по-прежнему берёт из облака
-Яндекса. Полная отвязка от облака, откат и защита от обновлений прошивки описаны в
-[docs/station-setup.md](docs/station-setup.md).
+Так голос идёт через HA, а настройки и обновления станция по-прежнему берёт из облака Яндекса. Чтобы
+отключить облако совсем, сделайте шаг 3б. Его можно сделать сразу или позже.
 
-> ⚠️ После полной отвязки станция пропадёт из приложения «Дом с Алисой», Яндекс Музыка на ней работать не будет.
+### Шаг 3б (рекомендуется). Полностью отвязать станцию от облака Яндекса
+
+Адаптер заменит все облачные сервисы, которые нужны станции: конфиг, авторизацию, проверку обновлений, метрики.
+Станция перестанет обращаться к Яндексу, а обновления прошивки, которые могут отобрать root, к ней не придут.
+
+> ⚠️ После отвязки станция пропадёт из приложения «Дом с Алисой», Яндекс Музыка на ней работать не будет.
+> Делайте это на станции, которая уже активирована в облаке Яндекса: адаптер берёт её настройки из файлов ниже.
+
+**1. Бэкап на станции.**
+
+```sh
+cp /system/vendor/quasar/quasar.cfg /data/quasar.cfg.uniproxy-only
+cd /data/quasar && tar -cf /data/quasar-cloud-backup.tar account_storage.dat devices.json registered initialized data/user_config.dat
+```
+
+**2. Передать адаптеру настройки станции.** Скопируйте со станции на компьютер `/data/quasar/devices.json` и
+`/data/quasar/data/user_config.dat`. Из `user_config.dat` достаньте JSON (перед ним в файле несколько байт
+заголовка):
+
+```sh
+python3 -c "import json; d = open('user_config.dat', 'rb').read().decode('utf-8', 'replace'); \
+cfg, _ = json.JSONDecoder().raw_decode(d[d.index('{'):]); json.dump(cfg, open('sync_info_base.json', 'w'), ensure_ascii=False)"
+```
+
+Положите `sync_info_base.json` и `devices.json` в папку конфигурации app на HA: `/addon_configs/<…>_quasar_adapter/`
+(видна через app Terminal & SSH, Samba или Studio Code Server). Перезапустите app.
+
+> 🔒 `devices.json` содержит ключи станции: никому его не отправляйте и не публикуйте.
+
+**3. Переключить облачные адреса на адаптер.** Скопируйте `/system/vendor/quasar/quasar.cfg` на компьютер и
+поменяйте в нём значения (`192.168.0.50` замените на IP вашего HA):
+
+| Ключ в `quasar.cfg` | Новое значение |
+|---|---|
+| `aliced.uniProxyUrl` | `ws://192.168.0.50:8080/uni.ws` (уже сделано на шаге 3) |
+| `common.backendUrl` | `http://192.168.0.50:8080/quasar` |
+| `authd.passportUrl` | `http://192.168.0.50:8080/oauth` |
+| `authd.codeUrl` | `http://192.168.0.50:8080/passport` |
+| `authd.loginUrl` | `http://192.168.0.50:8080/login` |
+| `arpc_client.server_url` | `http://192.168.0.50:8080/rpc` |
+| `teleme3d.appMetricaStartupHost` | `http://192.168.0.50:8080/startup` |
+| `teleme3d.appmetricaFallbackHosts` | `["http://192.168.0.50:8080/appmetrica"]` (это список) |
+| `teleme3d.clickdaemon.endpointUri` | `http://192.168.0.50:8080/clck/quasar_metrics/write/batch` |
+| `ntpd.timeOverHttpUrl` | `http://192.168.0.50:8080/scbh/generate_204` |
+| `fluent-bitd.fluent-bit.enabled` | `false` (выключает отправку логов в Яндекс) |
+
+Загрузите файл обратно и перезапустите станцию:
+
+```sh
+mount -o remount,rw /
+cp /data/quasar.cfg.new /system/vendor/quasar/quasar.cfg      # ваш исправленный файл
+sync; mount -o remount,ro /
+/system/vendor/quasar/q restart
+```
+
+После перезапуска станция за ~20 секунд получит конфиг от адаптера и подключится, в журнале app появятся
+запросы `get_sync_info`. Откат к шагу 3 (только голос через HA):
+`cp /data/quasar.cfg.uniproxy-only /system/vendor/quasar/quasar.cfg` с теми же `mount`, `sync` и `q restart`.
+
+Дополнительная защита от обновлений прошивки и подводные камни описаны в [docs/station-setup.md](docs/station-setup.md).
 
 ### Шаг 4. Выбрать пайплайн и проверить
 
