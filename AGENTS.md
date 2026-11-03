@@ -34,8 +34,16 @@
   `gh` на машине авторизован под другим, рабочим аккаунтом — для настроек репозитория не годится).
 - Один репозиторий — два канала: HACS (`custom_components/`, `hacs.json`) и магазин HA apps (`repository.yaml` +
   `ha-addon/`). Опубликованный app собирает адаптер из тега `v<version>`.
-- Релиз: поднять версию в 4 местах и обновить `adapter/uv.lock` (`uv lock`) (см. [ha-addon/README.md](ha-addon/README.md#release-checklist)), коммит,
-  тег `v<version>`, push тега. CI: `.github/workflows/adapter.yml` (pytest), `validate.yml` (hassfest, HACS, app lint).
+- **Каждая новая версия выкатывается GitHub-релизом с changelog.** Порядок
+  ([ha-addon/README.md](ha-addon/README.md#release-checklist)): поднять версию в 4 местах, `uv lock` в `adapter/`,
+  дописать раздел `## <version>` в [ha-addon/CHANGELOG.md](ha-addon/CHANGELOG.md), коммит, тег `v<version>`, push
+  ветки и тега. Релиз с текстом этого раздела создаёт `.github/workflows/release.yml`; без раздела или при
+  несовпадении версий он падает. Changelog пишется для пользователей, по-русски: что изменилось в работе, а не
+  какие файлы тронуты. Его же HA показывает на вкладке «Журнал изменений» у app.
+- Не пушить в `main` поднятую версию без тега и релиза в том же push: опубликованный app собирает адаптер из тега
+  `v<version>`, без тега app из магазина не установится. Dev-сборки на живой HA (локальный app) тоже требуют
+  новой версии; их изменения копятся в разделе changelog этой версии до релиза.
+- CI: `.github/workflows/adapter.yml` (pytest), `validate.yml` (hassfest, HACS, app lint), `release.yml` (релиз по тегу).
 
 ## Рабочее окружение
 

@@ -39,4 +39,8 @@ cd "$(ha-addon/build.sh)" && docker build --platform linux/arm64 \
 1. Bump the version in `ha-addon/config.yaml`, `adapter/pyproject.toml`, `adapter/quasar_adapter/__init__.py`,
    `custom_components/yandex_quasar/manifest.json`.
    Then run `cd adapter && uv lock` so `uv.lock` carries the same version.
-2. Commit, tag `v<version>`, push the tag (the app build installs the adapter from it), create a GitHub release.
+2. Add a `## <version>` section to `ha-addon/CHANGELOG.md` (user-facing, in Russian). HA shows this file in the
+   app's changelog tab.
+3. Commit, tag `v<version>`, push the branch and the tag. The app build installs the adapter from the tag, and
+   `.github/workflows/release.yml` creates the GitHub release with that changelog section (it fails if the section is
+   missing or a version file disagrees).
