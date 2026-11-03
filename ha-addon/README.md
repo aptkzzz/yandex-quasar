@@ -38,4 +38,5 @@ cd "$(ha-addon/build.sh)" && docker build --platform linux/arm64 \
 
 1. Bump the version in `ha-addon/config.yaml`, `adapter/pyproject.toml`, `adapter/quasar_adapter/__init__.py`,
    `custom_components/yandex_quasar/manifest.json`.
+   Then run `cd adapter && uv lock` so `uv.lock` carries the same version.
 2. Commit, tag `v<version>`, push the tag (the app build installs the adapter from it), create a GitHub release.
