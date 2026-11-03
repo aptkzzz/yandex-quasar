@@ -30,8 +30,10 @@
 
 ## Репозиторий и релизы
 
-- GitHub: `git@github.com:darkdarin/yandex-quasar.git` (push по SSH-ключу этого Mac, аккаунт `darkdarin`;
-  `gh` на машине авторизован под другим, рабочим аккаунтом — для настроек репозитория не годится).
+- GitHub: `git@github.com:darkdarin/yandex-quasar.git` (push по SSH-ключу этого Mac, аккаунт `darkdarin`).
+  В `gh` два аккаунта: глобально активен рабочий, а `.envrc` в корне (direnv, gitignored) задаёт `GH_TOKEN`
+  аккаунта `darkdarin`. В неинтерактивном shell хук direnv не срабатывает: вызывать `direnv exec . gh …`
+  (релизы, CI: `direnv exec . gh run list`). `gh auth switch` не трогать.
 - Один репозиторий — два канала: HACS (`custom_components/`, `hacs.json`) и магазин HA apps (`repository.yaml` +
   `ha-addon/`). Опубликованный app собирает адаптер из тега `v<version>`.
 - **Каждая новая версия выкатывается GitHub-релизом с changelog.** Порядок

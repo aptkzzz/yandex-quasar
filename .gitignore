@@ -24,3 +24,6 @@ ha-addon/.build/
 
 .DS_Store
 .idea/
+
+# direnv: personal per-machine environment
+.envrc
