@@ -30,20 +30,28 @@
 
 Это сервер, к которому подключается станция вместо облака Яндекса.
 
-1. **Настройки → Приложения → Магазин приложений → ⋮ → Репозитории**, добавьте
-   `https://github.com/darkdarin/yandex-quasar`.
-2. Найдите в магазине **Quasar Adapter**, установите и запустите.
+[![Открыть app в Home Assistant](https://my.home-assistant.io/badges/supervisor_addon.svg)](https://my.home-assistant.io/redirect/supervisor_addon/?addon=7391c79f_quasar_adapter&repository_url=https%3A%2F%2Fgithub.com%2Fdarkdarin%2Fyandex-quasar)
+
+1. Нажмите кнопку выше: Home Assistant предложит добавить репозиторий и откроет страницу app.
+   Вручную: **Настройки → Приложения → Магазин приложений → ⋮ → Репозитории**, добавьте
+   `https://github.com/darkdarin/yandex-quasar`, затем найдите в магазине **Quasar Adapter**.
+2. Установите app и запустите его.
 3. Откройте вкладку **Журнал** и скопируйте токен из строки `Generated new HA API token: …`. Он нужен на шаге 2.
    Если хотите задать свой токен, впишите его в опцию `api_token` на вкладке **Конфигурация** и перезапустите app.
 
 ### Шаг 2. Поставить интеграцию
 
-1. **HACS → ⋮ → Пользовательские репозитории**, добавьте `https://github.com/darkdarin/yandex-quasar`
-   с типом **Integration**.
-2. Найдите **Yandex Station (Quasar Adapter)**, установите и **перезапустите Home Assistant**.
+[![Открыть в HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=darkdarin&repository=yandex-quasar&category=integration)
+
+1. Нажмите кнопку выше: HACS откроет страницу интеграции и предложит добавить репозиторий.
+   Вручную: **HACS → ⋮ → Пользовательские репозитории**, добавьте `https://github.com/darkdarin/yandex-quasar`
+   с типом **Integration** и найдите **Yandex Station (Quasar Adapter)**.
+2. Нажмите **Скачать** и **перезапустите Home Assistant**.
 3. **Настройки → Устройства и службы**: HA сам найдёт Quasar Adapter (блок «Обнаружено»). Нажмите
-   **Настроить** и вставьте токен из шага 1. Если адаптер не нашёлся, нажмите **Добавить интеграцию →
-   Yandex Station (Quasar Adapter)** и укажите IP Home Assistant и порт `8080`.
+   **Настроить** и вставьте токен из шага 1. Если адаптер не нашёлся, нажмите кнопку ниже и укажите
+   IP Home Assistant и порт `8080`.
+
+   [![Добавить интеграцию](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=yandex_quasar)
 
 Пока станция не подключена, устройств в интеграции не будет. Это нормально.
 
@@ -94,7 +102,7 @@ python3 -c "import json; d = open('user_config.dat', 'rb').read().decode('utf-8'
 cfg, _ = json.JSONDecoder().raw_decode(d[d.index('{'):]); json.dump(cfg, open('sync_info_base.json', 'w'), ensure_ascii=False)"
 ```
 
-Положите `sync_info_base.json` и `devices.json` в папку конфигурации app на HA: `/addon_configs/<…>_quasar_adapter/`
+Положите `sync_info_base.json` и `devices.json` в папку конфигурации app на HA: `/addon_configs/7391c79f_quasar_adapter/`
 (видна через app Terminal & SSH, Samba или Studio Code Server). Перезапустите app.
 
 > 🔒 `devices.json` содержит ключи станции: никому его не отправляйте и не публикуйте.
