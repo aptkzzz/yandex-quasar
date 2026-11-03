@@ -1084,7 +1084,7 @@ wheels = [
 
 [[package]]
 name = "quasar-adapter"
-version = "0.2.3"
+version = "0.2.7"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
