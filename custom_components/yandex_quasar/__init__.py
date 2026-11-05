@@ -14,7 +14,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .client import AdapterAuthError, AdapterClient, AdapterConnectionError
 from .const import CONF_TOKEN, DOMAIN
 
-PLATFORMS = [Platform.ASSIST_SATELLITE, Platform.MEDIA_PLAYER, Platform.SELECT, Platform.SENSOR]
+PLATFORMS = [Platform.ASSIST_SATELLITE, Platform.MEDIA_PLAYER, Platform.SELECT, Platform.SENSOR, Platform.SWITCH]
 
 
 @dataclass

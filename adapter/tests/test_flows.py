@@ -262,3 +262,32 @@ async def aiohttp_server():
     yield factory
     for server in servers:
         await server.close()
+
+
+async def test_mic_preamp_off_sends_raw_audio_but_keeps_speech_detection(adapter, station, ha):
+    server, _http = adapter
+    from quasar_adapter.audio import pcm_level_db
+    from quasar_adapter.server import HUB_KEY
+
+    # The test tone is about -21 dBFS raw: only the boosted copy passes this threshold.
+    server.app[HUB_KEY].config.speech_threshold_db = -10
+    reply = await ha.request("config.mic_preamp", DEVICE_ID, {"enabled": False})
+    assert reply["ok"] and reply["data"]["mic_preamp"] is False
+    assert (await ha.request("config.mic_preamp", DEVICE_ID, {"enabled": "no"}))["error"]["code"] == "invalid"
+
+    await station.send(station.voice_input("voice-raw", 5, spotter=False))
+    await station.expect_event("InputStartAck")
+    start = await ha.expect("voice.start")
+    for page in make_opus(1.5, 500):
+        await station.send_audio(5, page)
+    pcm = bytearray()
+    while len(pcm) < 16000 * 2:
+        pcm += (await asyncio.wait_for(ha.audio.get(), 5))[2]
+    assert -26 < pcm_level_db(bytes(pcm)) < -16, "raw station level expected, not +30 dB"
+    while True:
+        asr = await station.expect_event("AsrResult", skip_partials=False)
+        assert not asr.Event.AsrResult.EndOfUtt, "the speech placeholder partial never came"
+        if asr.Event.AsrResult.Recognition:
+            assert asr.Event.AsrResult.Recognition[0].Normalized == "…"
+            break
+    assert start["data"]["turn_seq"]

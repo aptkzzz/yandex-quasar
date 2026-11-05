@@ -74,13 +74,13 @@ class Hub:
             self.stations[item["device_id"]] = Station(
                 device_id=item["device_id"], platform=item.get("platform", ""),
                 firmware=item.get("firmware", ""), name=item.get("name", ""),
-                wake_word=item.get("wake_word", "alisa"),
+                wake_word=item.get("wake_word", "alisa"), mic_preamp=item.get("mic_preamp", True),
             )
 
     def save_registry(self) -> None:
         data = [
             {"device_id": s.device_id, "platform": s.platform, "firmware": s.firmware, "name": s.name,
-             "wake_word": s.wake_word}
+             "wake_word": s.wake_word, "mic_preamp": s.mic_preamp}
             for s in self.stations.values()
         ]
         self._registry_path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")

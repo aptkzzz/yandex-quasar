@@ -59,3 +59,13 @@ def test_uneven_chunks():
     out, trimmer = run(audio, chunk_ms=7)
     assert out == audio[trimmer.cut_bytes:]
     assert trimmer.cut_bytes == RATE * 300 // 1000 * 2
+
+
+def test_parallel_stream_is_cut_by_the_same_decision():
+    audio = tone(200) + silence(800) + tone(1000)
+    quiet = bytes(len(audio))  # the stream actually forwarded: same length, decision taken on `audio`
+    trimmer = SpotterTailTrimmer(window_ms=300, threshold_db=-40)
+    step = RATE * 20 // 1000 * 2
+    out = b"".join(trimmer.feed(audio[i:i + step], quiet[i:i + step]) for i in range(0, len(audio), step))
+    assert trimmer.cut_bytes == RATE * 300 // 1000 * 2
+    assert out == quiet[trimmer.cut_bytes:]

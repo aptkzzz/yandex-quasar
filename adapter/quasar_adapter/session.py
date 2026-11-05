@@ -21,7 +21,7 @@ from aiohttp import web
 from google.protobuf.json_format import MessageToDict
 
 from . import aapi
-from .audio import MicDecoder, OpusTranscoder, SpotterTailTrimmer, pcm_level_db
+from .audio import MicDecoder, OpusTranscoder, SpotterTailTrimmer, apply_gain, pcm_level_db
 from .media import resolve_media_url
 from .station import WAKE_WORDS
 
@@ -209,16 +209,23 @@ class StationSession:
 
     def _forward(self, turn: Turn, payload: bytes) -> None:
         assert turn.decoder is not None
-        pcm = turn.decoder.feed(payload)
-        if turn.tail_trimmer is not None and pcm:
-            pcm = turn.tail_trimmer.feed(pcm)
+        raw = turn.decoder.feed(payload)
+        if not raw:
+            return
+        # Detectors (speech level, wake-word tail) always look at the boosted audio: their thresholds are absolute.
+        boosted = apply_gain(raw, self.cfg.mic_gain_db)
+        pcm = boosted if self.station.mic_preamp else raw
+        if turn.tail_trimmer is not None:
+            pcm = turn.tail_trimmer.feed(boosted, pcm)
             if turn.tail_trimmer.cut_bytes is not None:
                 if turn.tail_trimmer.cut_bytes:
                     _LOGGER.debug("[%s] cut %d ms of wake-word tail", self.station.device_id,
                                   turn.tail_trimmer.cut_bytes // 32)
                 turn.tail_trimmer = None
         if pcm:
-            if not turn.speech_seen and pcm_level_db(pcm) > self.cfg.speech_threshold_db:
+            # Same span as forwarded (after the tail cut), at the detector's gain.
+            level_pcm = pcm if self.station.mic_preamp else apply_gain(pcm, self.cfg.mic_gain_db)
+            if not turn.speech_seen and pcm_level_db(level_pcm) > self.cfg.speech_threshold_db:
                 turn.speech_seen = True
             if turn.debug_pcm is not None:
                 turn.debug_pcm += pcm
@@ -233,7 +240,7 @@ class StationSession:
 
     def _start_forwarding(self, turn: Turn, keep_preroll: bool) -> None:
         turn.forwarding = True
-        turn.decoder = MicDecoder(self.cfg.mic_gain_db)
+        turn.decoder = MicDecoder()
         buffered, turn.preroll = turn.preroll, []
         if keep_preroll:
             for chunk in buffered:
@@ -680,6 +687,14 @@ class StationSession:
         return {}
 
     async def _cmd_station_get(self, data: dict) -> dict:
+        return self.station.info()
+
+    async def _cmd_config_mic_preamp(self, data: dict) -> dict:
+        if not isinstance(data.get("enabled"), bool):
+            raise CommandError("invalid", "enabled must be true or false")
+        self.station.mic_preamp = data["enabled"]
+        self.hub.save_registry()
+        _LOGGER.info("[%s] mic preamp %s", self.station.device_id, "on" if self.station.mic_preamp else "off")
         return self.station.info()
 
     async def _cmd_config_wake_word(self, data: dict) -> dict:

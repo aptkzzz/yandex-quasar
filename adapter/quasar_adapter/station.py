@@ -62,6 +62,8 @@ class Station:
     name: str = ""
     protocol: str = "aapi"
     wake_word: str = "alisa"
+    # Adapter gain (mic_gain_db) on the audio sent to HA; off = raw station audio for processing in HA.
+    mic_preamp: bool = True
     state: StationState = field(default_factory=StationState)
 
     @property
@@ -81,6 +83,7 @@ class Station:
             "capabilities": self.capabilities(),
             "wake_words": [{"id": key, "name": name} for key, name in WAKE_WORDS.items()],
             "active_wake_word": self.wake_word,
+            "mic_preamp": self.mic_preamp,
             "state": self.state.as_dict(),
         }
 

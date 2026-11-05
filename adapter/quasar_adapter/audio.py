@@ -87,11 +87,10 @@ class OggDemuxer:
 
 
 class MicDecoder:
-    """Decodes station microphone Ogg/Opus into PCM s16le 16 kHz mono with fixed gain."""
+    """Decodes station microphone Ogg/Opus into PCM s16le 16 kHz mono, as the station sent it (no gain)."""
 
-    def __init__(self, gain_db: float) -> None:
+    def __init__(self) -> None:
         self._demux = OggDemuxer()
-        self._gain = float(10 ** (gain_db / 20))
         self._codec: av.CodecContext | None = None
         self._resampler = av.AudioResampler(format="s16", layout="mono", rate=PCM_RATE)
         self.logical_streams = 0
@@ -113,14 +112,16 @@ class MicDecoder:
                 continue
             for frame in frames:
                 for res in self._resampler.resample(frame):
-                    out += self._apply_gain(res.to_ndarray().reshape(-1))
+                    out += res.to_ndarray().reshape(-1).astype("<i2").tobytes()
         return bytes(out)
 
-    def _apply_gain(self, samples: np.ndarray) -> bytes:
-        if self._gain == 1.0:
-            return samples.astype("<i2").tobytes()
-        boosted = np.clip(samples.astype(np.float32) * self._gain, -32768, 32767)
-        return boosted.astype("<i2").tobytes()
+
+def apply_gain(pcm: bytes, gain_db: float) -> bytes:
+    """Fixed gain for s16le PCM with hard clipping."""
+    if not gain_db or not pcm:
+        return pcm
+    samples = np.frombuffer(pcm, "<i2").astype(np.float32) * float(10 ** (gain_db / 20))
+    return np.clip(samples, -32768, 32767).astype("<i2").tobytes()
 
 
 def pcm_level_db(pcm: bytes) -> float:
@@ -148,16 +149,23 @@ class SpotterTailTrimmer:
         self._gap_frames = max(1, gap_ms // 20)
         self._threshold_db = threshold_db
         self._buffer = bytearray()
+        self._forward = bytearray()
         self._frames = 0
         self._loud_seen = False
         self._silent_run = 0
         self.cut_bytes: int | None = None  # decided cut; None while deciding
 
-    def feed(self, pcm: bytes) -> bytes:
-        """Return the audio to forward: nothing while deciding, then everything after the cut."""
+    def feed(self, pcm: bytes, forward: bytes | None = None) -> bytes:
+        """Return the audio to forward: nothing while deciding, then everything after the cut.
+
+        ``pcm`` is what the decision is made on (levels are absolute); ``forward`` is a same-length stream to cut
+        and return instead, e.g. audio without gain when HA wants it raw. Defaults to ``pcm`` itself.
+        """
+        forward = pcm if forward is None else forward
         if self.cut_bytes is not None:
-            return pcm
+            return forward
         self._buffer += pcm
+        self._forward += forward
         while self.cut_bytes is None and (self._frames + 1) * self.FRAME_BYTES <= len(self._buffer):
             start = self._frames * self.FRAME_BYTES
             loud = pcm_level_db(bytes(self._buffer[start:start + self.FRAME_BYTES])) > self._threshold_db
@@ -172,8 +180,8 @@ class SpotterTailTrimmer:
                     self.cut_bytes = self._frames * self.FRAME_BYTES if self._loud_seen else 0
         if self.cut_bytes is None:
             return b""
-        out = bytes(self._buffer[self.cut_bytes:])
-        self._buffer = bytearray()
+        out = bytes(self._forward[self.cut_bytes:])
+        self._buffer, self._forward = bytearray(), bytearray()
         return out
 
 
