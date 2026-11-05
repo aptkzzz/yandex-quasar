@@ -1,8 +1,11 @@
 name: Quasar Adapter
-version: "0.2.10"
+version: "0.2.11"
 slug: quasar_adapter
 description: Local backend for rooted Yandex Stations — Assist satellite and media player for Home Assistant
 url: https://github.com/darkdarin/yandex-quasar
+# Prebuilt multi-arch image published by .github/workflows/release.yml; ha-addon/build.sh drops this line
+# for a local app that the Supervisor builds from source.
+image: ghcr.io/darkdarin/quasar-adapter
 arch:
   - aarch64
   - amd64

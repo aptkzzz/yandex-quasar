@@ -22,3 +22,20 @@ jobs:
         run: tools/gen_protos.sh
       - name: Run tests
         run: uv run pytest -q
+
+  # The app image as the release builds it (amd64 only, not published): catches Dockerfile breakage before a tag.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assemble the build context
+        id: stage
+        run: echo "dir=$(ha-addon/build.sh)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ steps.stage.outputs.dir }}
+          platforms: linux/amd64
+          build-args: BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.14-alpine3.22
+          push: false
+          cache-from: type=gha,scope=amd64

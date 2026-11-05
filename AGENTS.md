@@ -35,23 +35,27 @@
   аккаунта `darkdarin`. В неинтерактивном shell хук direnv не срабатывает: вызывать `direnv exec . gh …`
   (релизы, CI: `direnv exec . gh run list`). `gh auth switch` не трогать.
 - Один репозиторий — два канала: HACS (`custom_components/`, `hacs.json`) и магазин HA apps (`repository.yaml` +
-  `ha-addon/`). Опубликованный app собирает адаптер из тега `v<version>`.
+  `ha-addon/`). Опубликованный app — готовый образ `ghcr.io/darkdarin/quasar-adapter:<version>` (`image:` в
+  `ha-addon/config.yaml`), его собирает и публикует `release.yml`.
 - **Каждая новая версия выкатывается GitHub-релизом с changelog.** Порядок
   ([чек-лист ниже](#чек-лист-релиза)): поднять версию в 4 местах, `uv lock` в `adapter/`,
   дописать раздел `## <version>` в [ha-addon/CHANGELOG.md](ha-addon/CHANGELOG.md), коммит, тег `v<version>`, push
-  ветки и тега. Релиз с текстом этого раздела создаёт `.github/workflows/release.yml`; без раздела или при
-  несовпадении версий он падает. Changelog пишется для пользователей, по-русски: что изменилось в работе, а не
+  ветки и тега. `.github/workflows/release.yml` собирает образ (amd64 и arm64), публикует его и создаёт релиз с
+  текстом этого раздела; без раздела или при несовпадении версий он падает. Changelog пишется для пользователей, по-русски: что изменилось в работе, а не
   какие файлы тронуты. Его же HA показывает на вкладке «Журнал изменений» у app.
-- Не пушить в `main` поднятую версию без тега и релиза в том же push: опубликованный app собирает адаптер из тега
-  `v<version>`, без тега app из магазина не установится. Dev-сборки на живой HA (локальный app) тоже требуют
+- Не пушить в `main` поднятую версию без тега и релиза в том же push: магазин увидит новую версию app и попробует
+  скачать образ `:<version>`, которого ещё нет, — обновление упадёт. Dev-сборки на живой HA (локальный app) тоже требуют
   новой версии; их изменения копятся в разделе changelog этой версии до релиза.
-- CI: `.github/workflows/adapter.yml` (pytest), `validate.yml` (hassfest, HACS, app lint), `release.yml` (релиз по тегу).
+- CI: `.github/workflows/adapter.yml` (pytest и пробная сборка образа amd64), `validate.yml` (hassfest, HACS, app
+  lint), `release.yml` (образ и релиз по тегу).
 
 ### Сборка app
 
-- Опубликованный app (из магазина) ставит адаптер из git-тега `v<version>`.
-- Локальная сборка: `ha-addon/build.sh` собирает в `ha-addon/.build/quasar_adapter` папку app вместе с исходниками
-  адаптера, и Dockerfile ставит их вместо тега.
+- `ha-addon/build.sh` собирает в `ha-addon/.build/quasar_adapter` контекст сборки: файлы app и исходники адаптера.
+  Из него собирает образ CI, и он же — локальный app: в его `config.yaml` нет `image:`, поэтому Supervisor
+  собирает образ сам.
+- Dockerfile ставит зависимости строго по `uv.lock` и только с PyPI (базовый образ HA подмешивает свой индекс
+  колёс), компилирует quasar-protos внутрь образа и проверяет импорт.
 
 Установка и обновление локального app на живом HA:
 
@@ -82,7 +86,8 @@ cd "$(ha-addon/build.sh)" && docker build --platform linux/arm64 \
    `custom_components/yandex_quasar/manifest.json`, затем `cd adapter && uv lock`.
 2. Дописать раздел `## <version>` в `ha-addon/CHANGELOG.md`.
 3. Коммит, тег `v<version>`, push ветки и тега. Проверить, что `release.yml` прошёл:
-   `direnv exec . gh run list --workflow release.yml`.
+   `direnv exec . gh run list --workflow release.yml`, и что образ скачивается без авторизации (пакет в ghcr
+   должен быть публичным).
 
 ## Рабочее окружение
 

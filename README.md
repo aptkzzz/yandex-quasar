@@ -211,8 +211,8 @@ Music Assistant спросит код сопряжения. Код придёт 
 
 Протокол станции изучен по открытым проектам [quasard](https://github.com/amirilivice/quasard),
 [quasar-server](https://github.com/v3rt3p/quasar-server), [quasar-protos](https://github.com/v3rt3p/quasar-protos)
-и вики [hackalice.me](https://hackalice.me). Их код в репозиторий не копировался. `.proto`-файлы (© Яндекс)
-скачиваются и компилируются при сборке.
+и вики [hackalice.me](https://hackalice.me). Их код в репозиторий не копировался. `.proto`-файлы (© Яндекс) в
+репозитории не хранятся: они компилируются при сборке образа app.
 
 ## Лицензия
 
