@@ -41,6 +41,10 @@ class FakeShell:
             self.on_restart()
         if command.startswith("cmp -s"):  # install script: emulate cp
             self.files[CFG_PATH] = self.files[provision.CFG_UPLOAD]
+        if "tar -xf" in command:  # cloud backup holds the original user_config.dat
+            if provision.CLOUD_BACKUP not in self.files:
+                return 1, "no backup"
+            self.files[f"{provision.SEED_TMP}/data/user_config.dat"] = self.files[provision.CLOUD_BACKUP]
         if command.startswith("[ -f") and "|| " not in command:
             return (0 if command.split()[2] in self.files else 1), ""
         return 0, ""
@@ -146,3 +150,16 @@ async def test_restore_puts_factory_config_back(hub, shell):
     shell.files[CFG_PATH] = json.dumps(redirect_config(FACTORY_CFG, "x", 1, True)[0]).encode()
     await Provisioner(hub, {"method": "ssh", "host": "10.0.0.9"}).restore()
     assert json.loads(shell.files[CFG_PATH]) == FACTORY_CFG
+
+
+async def test_seed_prefers_cloud_backup_and_richer_config(hub, shell):
+    rich = b"hdr" + json.dumps({"account_config": {"a": 1}, "system_config": {"big": "x" * 100}}).encode()
+    shell.files[provision.CLOUD_BACKUP] = rich  # stands in for the tar member
+    shell.files[provision.USER_CONFIG] = b"hdr" + json.dumps({"system_config": {}}).encode()  # what we served
+    shell.on_restart = lambda: hub.sessions.__setitem__("DEV1", object())
+    await Provisioner(hub, {"method": "ssh", "host": "10.0.0.9"}).provision()
+    assert hub.backend.seeds["sync_info_base.json"]["system_config"]["big"] == "x" * 100
+    hub.backend.seeds["sync_info_base.json"] = {"system_config": {"big": "y" * 500}}
+    hub.sessions.clear()
+    await Provisioner(hub, {"method": "ssh", "host": "10.0.0.9"}).provision()
+    assert hub.backend.seeds["sync_info_base.json"]["system_config"]["big"] == "y" * 500  # richer kept

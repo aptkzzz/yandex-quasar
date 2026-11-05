@@ -32,6 +32,7 @@ CLOUD_BACKUP = "/data/quasar-cloud-backup.tar"
 CLOUD_FILES = "account_storage.dat devices.json registered initialized data/user_config.dat"
 DEVICES_JSON = "/data/quasar/devices.json"
 USER_CONFIG = "/data/quasar/data/user_config.dat"
+SEED_TMP = "/tmp/quasar_adapter_seed"
 
 # Models whose quasar.cfg layout has been checked on a real device (deviceType from quasar.cfg).
 SUPPORTED_PLATFORMS = {"cucumber": "Яндекс Станция Миди"}
@@ -275,10 +276,23 @@ class Provisioner:
         for device in devices.get("devices", []):
             known[device.get("id")] = device
         backend.write_seed("devices.json", {**existing, **devices, "devices": list(known.values())})
-        if backend.read_seed("sync_info_base.json") is None:
-            backend.write_seed("sync_info_base.json", extract_user_config(user_config_raw))
+        config = extract_user_config(user_config_raw)
+        current = backend.read_seed("sync_info_base.json")
+        # Keep the richer one: a hand-made seed or an earlier capture may hold more than this station has now.
+        if current is None or len(json.dumps(config)) > len(json.dumps(current)):
+            backend.write_seed("sync_info_base.json", config)
         else:
-            self._step("sync_info_base.json уже есть, оставлен без изменений")
+            self._step("sync_info_base.json уже есть и не беднее, оставлен без изменений")
+
+    async def _cloud_user_config(self, shell: StationShell) -> bytes:
+        """The cloud config as it was before unbinding: once unbound, user_config.dat holds what we served."""
+        rc, _ = await shell.run(
+            f"rm -rf {SEED_TMP} && mkdir -p {SEED_TMP} && tar -xf {CLOUD_BACKUP} -C {SEED_TMP} data/user_config.dat"
+        )
+        try:
+            return await shell.read(f"{SEED_TMP}/data/user_config.dat") if rc == 0 else await shell.read(USER_CONFIG)
+        finally:
+            await shell.run(f"rm -rf {SEED_TMP}")
 
     async def provision(self) -> dict:
         host = self.hub.config.advertise_host or self.hub.local_ip
@@ -294,7 +308,7 @@ class Provisioner:
             await shell.run(f"[ -f {BACKUP_ORIG} ] || cp {CFG_PATH} {BACKUP_ORIG}")
             if self.full:
                 await shell.run(f"[ -f {CLOUD_BACKUP} ] || (cd /data/quasar && tar -cf {CLOUD_BACKUP} {CLOUD_FILES})")
-                self._save_seeds(await shell.read(DEVICES_JSON), await shell.read(USER_CONFIG))
+                self._save_seeds(await shell.read(DEVICES_JSON), await self._cloud_user_config(shell))
                 self._step("данные станции сохранены в адаптере")
             if not changed:
                 self._step("станция уже настроена на этот адаптер")
