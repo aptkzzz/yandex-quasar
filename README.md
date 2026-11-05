@@ -1,4 +1,20 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/darkdarin/yandex-quasar/main/custom_components/yandex_quasar/brand/dark_logo.png">
+    <img alt="Yandex Quasar" src="https://raw.githubusercontent.com/darkdarin/yandex-quasar/main/custom_components/yandex_quasar/brand/logo.png" width="360">
+  </picture>
+</p>
+
 # Yandex Quasar → Home Assistant
+
+[![Release](https://img.shields.io/github/v/release/darkdarin/yandex-quasar?sort=semver)](https://github.com/darkdarin/yandex-quasar/releases)
+[![Adapter](https://github.com/darkdarin/yandex-quasar/actions/workflows/adapter.yml/badge.svg)](https://github.com/darkdarin/yandex-quasar/actions/workflows/adapter.yml)
+[![Validate](https://github.com/darkdarin/yandex-quasar/actions/workflows/validate.yml/badge.svg)](https://github.com/darkdarin/yandex-quasar/actions/workflows/validate.yml)
+[![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.10%2B-18BCF2?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
+![aarch64](https://img.shields.io/badge/aarch64-yes-green.svg)
+![amd64](https://img.shields.io/badge/amd64-yes-green.svg)
+[![License](https://img.shields.io/github/license/darkdarin/yandex-quasar)](LICENSE)
 
 Превращает **рутованную Яндекс Станцию** в голосовой ассистент и колонку Home Assistant. Станция по-прежнему
 слышит «Алиса» своими микрофонами и говорит своим динамиком, но понимает команды и отвечает ваш
