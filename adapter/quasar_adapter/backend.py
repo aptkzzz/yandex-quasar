@@ -131,6 +131,15 @@ class Backend:
                     _LOGGER.error("Bad seed file %s: %s", path, err)
         return None
 
+    def read_seed(self, name: str) -> Any | None:
+        return self._seed(name)
+
+    def write_seed(self, name: str, data: Any) -> None:
+        """Seeds captured by provisioning go where a user would put them by hand (the app's config dir)."""
+        path = Path(self.cfg.seed_dir or self._dir) / name
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        path.chmod(0o600)  # devices.json carries the station's glagol keys
+
     # ---- quasar.yandex.net ----------------------------------------------------------------------------------
 
     async def ok(self, request: web.Request) -> web.StreamResponse:

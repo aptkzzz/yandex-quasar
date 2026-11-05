@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 from aiohttp import WSMsgType, web
 
 from . import __version__
+from .provision import Provisioner, ProvisionError
 from .session import CommandError
 
 if TYPE_CHECKING:
@@ -65,6 +66,7 @@ class HAClient:
 class HAApi:
     def __init__(self, hub: Hub) -> None:
         self.hub = hub
+        self._provision_lock = asyncio.Lock()
 
     async def handle(self, request: web.Request) -> web.StreamResponse:
         ws = web.WebSocketResponse(heartbeat=30, max_msg_size=4 * 1024 * 1024)
@@ -132,6 +134,8 @@ class HAApi:
     async def _execute(self, type_: str, station_id: str | None, data: dict) -> dict:
         if type_ == "stations.list":
             return {"stations": [s.info() for s in self.hub.stations.values()]}
+        if type_ in ("station.provision", "station.restore"):
+            return await self._provision(type_, data)
         if not station_id:
             raise CommandError("invalid", "station is required")
         session = self.hub.sessions.get(station_id)
@@ -140,3 +144,15 @@ class HAApi:
                 return self.hub.stations[station_id].info()
             raise CommandError("station_offline")
         return await session.command(type_, data)
+
+    async def _provision(self, type_: str, data: dict) -> dict:
+        # One job at a time: two jobs could race on the same station's quasar.cfg.
+        if self._provision_lock.locked():
+            raise CommandError("busy", "another station is being set up")
+        async with self._provision_lock:
+            try:
+                job = Provisioner(self.hub, data)
+                return await (job.provision() if type_ == "station.provision" else job.restore())
+            except ProvisionError as err:
+                _LOGGER.warning("%s %s failed: %s", type_, data.get("host"), err)
+                raise CommandError(err.code, str(err)) from err

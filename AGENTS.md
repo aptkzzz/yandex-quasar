@@ -66,7 +66,8 @@ ssh ha 'ha apps start local_quasar_adapter && ha apps logs local_quasar_adapter'
 `COPYFILE_DISABLE=1` не пускает в архив macOS-файлы `._*`. Если `ha store reload` упал по таймауту, повторить:
 Supervisor может быть занят предыдущей перезагрузкой. Если в рабочем дереве есть чужие незакоммиченные правки,
 собирать из `git archive HEAD` во временную папку. Исходные файлы бэкенда для локального app лежат в
-`/addon_configs/local_quasar_adapter/` на хосте.
+`/addon_configs/local_quasar_adapter/` на хосте. Локальный app и app из магазина делят порт 8080: перед установкой
+  локального остановить app из магазина и перенести токен (`api_token`) и seed-файлы, потом вернуть обратно.
 
 Проверка сборки под arm64 (как RPi 5):
 
@@ -91,7 +92,7 @@ cd "$(ha-addon/build.sh)" && docker build --platform linux/arm64 \
 |---|---|
 | Станция (Midi) | `ssh alice` (192.168.1.25:2222, root). `uniProxyUrl` → `ws://192.168.0.50:8080/uni.ws`, бэкап — `/data/quasar.cfg.orig` |
 | Home Assistant OS (RPi 5) | `ssh ha` (192.168.0.50, Terminal & SSH add-on). API-токен — `main-ha.env` в корне (gitignored, в чат не выводить) |
-| Адаптер | add-on `local_quasar_adapter` на HA; обновление — [«Сборка app»](#сборка-app) |
+| Адаптер | app из магазина `7391c79f_quasar_adapter`, seed-файлы — `/addon_configs/7391c79f_quasar_adapter/` (в SSH-аддоне `/app_configs/…`). Dev-сборка — локальный app (см. [«Сборка app»](#сборка-app)) |
 | Интеграция | `tar -C custom_components -cf - yandex_quasar \| ssh ha 'tar -C /config/custom_components -xf -'`, затем `ssh ha 'ha core check && ha core restart'` |
 | Отладка Assist | WS `assist_pipeline/pipeline_debug/list|get` на основном HA; пайплайн «OpenAI» (облачный STT + агент) |
 | Тесты адаптера | `cd adapter && uv run pytest` |

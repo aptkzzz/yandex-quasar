@@ -202,7 +202,9 @@ class AdapterClient:
 
     # ---- outgoing -------------------------------------------------------------------------------------------
 
-    async def request(self, type_: str, station: str | None = None, data: dict | None = None) -> dict:
+    async def request(
+        self, type_: str, station: str | None = None, data: dict | None = None, *, timeout: float = REQUEST_TIMEOUT
+    ) -> dict:
         if self._ws is None or self._ws.closed:
             raise AdapterConnectionError("not connected")
         self._msg_id += 1
@@ -211,7 +213,7 @@ class AdapterClient:
         self._pending[msg_id] = fut
         try:
             await self._ws.send_json({"type": type_, "id": msg_id, "station": station, "data": data or {}})
-            async with asyncio.timeout(REQUEST_TIMEOUT):
+            async with asyncio.timeout(timeout):
                 return await fut
         except (aiohttp.ClientError, ConnectionError) as err:
             raise AdapterConnectionError(str(err)) from err

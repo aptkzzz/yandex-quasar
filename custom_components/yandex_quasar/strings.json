@@ -32,16 +32,52 @@
         "data_description": {
           "token": "Stored by the adapter in data/api_token."
         }
+      },
+      "station": {
+        "title": "Set up a Yandex Station",
+        "description": "The adapter connects to the station over SSH or ADB, keeps backups on the station and points it at itself. The station must be rooted. In 1–3 minutes it restarts and shows up in Home Assistant. If it does not come back, the changes are rolled back.",
+        "data": {
+          "host": "Station IP",
+          "method": "Connection method",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "private_key": "Private SSH key",
+          "mode": "What to set up",
+          "allow_untested": "Allow an untested model"
+        },
+        "data_description": {
+          "port": "Empty: 22 for SSH, 5555 for ADB.",
+          "username": "SSH only.",
+          "password": "SSH only. Empty means an empty root password, as on most rooted stations.",
+          "private_key": "SSH only, optional: OpenSSH key.",
+          "allow_untested": "Only Yandex Station Midi has been tested. Other models may misbehave."
+        }
       }
     },
     "error": {
       "cannot_connect": "Cannot connect to the adapter",
-      "invalid_auth": "Invalid API token"
+      "invalid_auth": "Invalid API token",
+      "auth_failed": "The station rejected the login. Check the username, password or key.",
+      "unsupported": "This station model is untested. Enable “Allow an untested model” to try anyway.",
+      "timeout": "The station did not connect to the adapter within 4 minutes. Its settings were rolled back.",
+      "station_error": "A command on the station failed. See the Quasar Adapter app log.",
+      "busy": "The adapter is setting up another station. Wait and retry.",
+      "no_backup": "The station has no backup of the factory quasar.cfg (/data/quasar.cfg.orig).",
+      "adapter_offline": "Quasar Adapter is not connected.",
+      "unknown": "Unknown error. See the Quasar Adapter app log.",
+      "station_unreachable": "Could not connect to the station. Check the IP, port and method."
     },
     "abort": {
       "already_configured": "This adapter is already configured",
       "no_adapter_id": "The discovered adapter did not report its ID",
-      "reauth_successful": "Token updated"
+      "reauth_successful": "Token updated",
+      "station_provisioned": "The station {host} is connected to the adapter.\n\n{steps}",
+      "no_adapter": "Add the Quasar Adapter first: it sets the station up.",
+      "not_supported": "Could not identify the station."
+    },
+    "progress": {
+      "provisioning": "Setting up the station {host}. This takes up to 4 minutes while the station restarts and reconnects."
     }
   },
   "entity": {
@@ -80,6 +116,90 @@
           "aggressive": "Aggressive",
           "relaxed": "Relaxed"
         }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Stations",
+        "description": "What do you want to do?",
+        "menu_options": {
+          "station": "Set up a station",
+          "restore": "Return a station to Yandex"
+        }
+      },
+      "station": {
+        "title": "Set up a Yandex Station",
+        "description": "The adapter connects to the station over SSH or ADB, keeps backups on the station and points it at itself. The station must be rooted. In 1–3 minutes it restarts and shows up in Home Assistant. If it does not come back, the changes are rolled back.",
+        "data": {
+          "host": "Station IP",
+          "method": "Connection method",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "private_key": "Private SSH key",
+          "mode": "What to set up",
+          "allow_untested": "Allow an untested model"
+        },
+        "data_description": {
+          "port": "Empty: 22 for SSH, 5555 for ADB.",
+          "username": "SSH only.",
+          "password": "SSH only. Empty means an empty root password, as on most rooted stations.",
+          "private_key": "SSH only, optional: OpenSSH key.",
+          "allow_untested": "Only Yandex Station Midi has been tested. Other models may misbehave."
+        }
+      },
+      "restore": {
+        "title": "Return the station to Yandex",
+        "description": "The adapter restores the factory quasar.cfg from the backup on the station and restarts it. The station works with the Yandex cloud again.",
+        "data": {
+          "host": "Station IP",
+          "method": "Connection method",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "private_key": "Private SSH key"
+        },
+        "data_description": {
+          "port": "Empty: 22 for SSH, 5555 for ADB.",
+          "username": "SSH only.",
+          "password": "SSH only. Empty means an empty root password, as on most rooted stations.",
+          "private_key": "SSH only, optional: OpenSSH key."
+        }
+      }
+    },
+    "progress": {
+      "provisioning": "Setting up the station {host}. This takes up to 4 minutes while the station restarts and reconnects.",
+      "restoring": "Returning the station {host} to Yandex…"
+    },
+    "abort": {
+      "station_provisioned": "The station {host} is connected to the adapter.\n\n{steps}",
+      "station_restored": "The station {host} is back on the Yandex cloud.\n\n{steps}"
+    },
+    "error": {
+      "auth_failed": "The station rejected the login. Check the username, password or key.",
+      "unsupported": "This station model is untested. Enable “Allow an untested model” to try anyway.",
+      "timeout": "The station did not connect to the adapter within 4 minutes. Its settings were rolled back.",
+      "station_error": "A command on the station failed. See the Quasar Adapter app log.",
+      "busy": "The adapter is setting up another station. Wait and retry.",
+      "no_backup": "The station has no backup of the factory quasar.cfg (/data/quasar.cfg.orig).",
+      "adapter_offline": "Quasar Adapter is not connected.",
+      "unknown": "Unknown error. See the Quasar Adapter app log.",
+      "station_unreachable": "Could not connect to the station. Check the IP, port and method."
+    }
+  },
+  "selector": {
+    "method": {
+      "options": {
+        "ssh": "SSH",
+        "adb": "ADB"
+      }
+    },
+    "mode": {
+      "options": {
+        "full": "Fully unbind from the Yandex cloud (recommended)",
+        "voice": "Voice through Home Assistant only"
       }
     }
   }
