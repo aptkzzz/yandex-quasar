@@ -10,7 +10,8 @@
 - `custom_components/yandex_quasar/` — **HA custom integration** (`assist_satellite`, `media_player`, `sensor`,
   `select`; позже `event`, `light`, `switch`).
 - `station-agent/` — опциональный агент на станции (Go): кнопки, LED, мьют.
-- `ha-addon/` — упаковка адаптера как HA OS add-on (app), установка: [ha-addon/README.md](ha-addon/README.md).
+- `ha-addon/` — упаковка адаптера как HA OS add-on (app). `README.md` и `DOCS.md` там — для пользователей
+  (страница app в магазине и вкладка «Документация»); сборка и релиз описаны ниже.
 
 ## Документация (читать перед работой)
 
@@ -36,7 +37,7 @@
 - Один репозиторий — два канала: HACS (`custom_components/`, `hacs.json`) и магазин HA apps (`repository.yaml` +
   `ha-addon/`). Опубликованный app собирает адаптер из тега `v<version>`.
 - **Каждая новая версия выкатывается GitHub-релизом с changelog.** Порядок
-  ([ha-addon/README.md](ha-addon/README.md#release-checklist)): поднять версию в 4 местах, `uv lock` в `adapter/`,
+  ([чек-лист ниже](#чек-лист-релиза)): поднять версию в 4 местах, `uv lock` в `adapter/`,
   дописать раздел `## <version>` в [ha-addon/CHANGELOG.md](ha-addon/CHANGELOG.md), коммит, тег `v<version>`, push
   ветки и тега. Релиз с текстом этого раздела создаёт `.github/workflows/release.yml`; без раздела или при
   несовпадении версий он падает. Changelog пишется для пользователей, по-русски: что изменилось в работе, а не
@@ -46,6 +47,42 @@
   новой версии; их изменения копятся в разделе changelog этой версии до релиза.
 - CI: `.github/workflows/adapter.yml` (pytest), `validate.yml` (hassfest, HACS, app lint), `release.yml` (релиз по тегу).
 
+### Сборка app
+
+- Опубликованный app (из магазина) ставит адаптер из git-тега `v<version>`.
+- Локальная сборка: `ha-addon/build.sh` собирает в `ha-addon/.build/quasar_adapter` папку app вместе с исходниками
+  адаптера, и Dockerfile ставит их вместо тега.
+
+Установка и обновление локального app на живом HA:
+
+```sh
+STAGE=$(ha-addon/build.sh)
+COPYFILE_DISABLE=1 tar -C "$(dirname "$STAGE")" -cf - quasar_adapter | ssh ha 'rm -rf /local_apps/quasar_adapter && tar -C /local_apps -xf -'
+ssh ha 'ha store reload && ha apps install local_quasar_adapter'   # первый раз
+ssh ha 'ha store reload && ha apps update local_quasar_adapter'    # после изменений (нужна новая версия в config.yaml)
+ssh ha 'ha apps start local_quasar_adapter && ha apps logs local_quasar_adapter'
+```
+
+`COPYFILE_DISABLE=1` не пускает в архив macOS-файлы `._*`. Если `ha store reload` упал по таймауту, повторить:
+Supervisor может быть занят предыдущей перезагрузкой. Если в рабочем дереве есть чужие незакоммиченные правки,
+собирать из `git archive HEAD` во временную папку. Исходные файлы бэкенда для локального app лежат в
+`/addon_configs/local_quasar_adapter/` на хосте.
+
+Проверка сборки под arm64 (как RPi 5):
+
+```sh
+cd "$(ha-addon/build.sh)" && docker build --platform linux/arm64 \
+  --build-arg BUILD_FROM=ghcr.io/home-assistant/aarch64-base-python:3.14-alpine3.22 -t local/quasar_adapter:test .
+```
+
+### Чек-лист релиза
+
+1. Поднять версию в `ha-addon/config.yaml`, `adapter/pyproject.toml`, `adapter/quasar_adapter/__init__.py`,
+   `custom_components/yandex_quasar/manifest.json`, затем `cd adapter && uv lock`.
+2. Дописать раздел `## <version>` в `ha-addon/CHANGELOG.md`.
+3. Коммит, тег `v<version>`, push ветки и тега. Проверить, что `release.yml` прошёл:
+   `direnv exec . gh run list --workflow release.yml`.
+
 ## Рабочее окружение
 
 Разработка ведётся на **живом HA** владельца, отдельного тестового HA нет.
@@ -54,7 +91,7 @@
 |---|---|
 | Станция (Midi) | `ssh alice` (192.168.1.25:2222, root). `uniProxyUrl` → `ws://192.168.0.50:8080/uni.ws`, бэкап — `/data/quasar.cfg.orig` |
 | Home Assistant OS (RPi 5) | `ssh ha` (192.168.0.50, Terminal & SSH add-on). API-токен — `main-ha.env` в корне (gitignored, в чат не выводить) |
-| Адаптер | add-on `local_quasar_adapter` на HA; обновление — [ha-addon/README.md](ha-addon/README.md) |
+| Адаптер | add-on `local_quasar_adapter` на HA; обновление — [«Сборка app»](#сборка-app) |
 | Интеграция | `tar -C custom_components -cf - yandex_quasar \| ssh ha 'tar -C /config/custom_components -xf -'`, затем `ssh ha 'ha core check && ha core restart'` |
 | Отладка Assist | WS `assist_pipeline/pipeline_debug/list|get` на основном HA; пайплайн «OpenAI» (облачный STT + агент) |
 | Тесты адаптера | `cd adapter && uv run pytest` |

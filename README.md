@@ -197,7 +197,7 @@ Music Assistant спросит код сопряжения. Код придёт 
 ## Разработка
 
 - Адаптер: `cd adapter && tools/gen_protos.sh && uv run pytest`.
-- Локальная сборка app: [ha-addon/README.md](ha-addon/README.md). Правила для агентов: [AGENTS.md](AGENTS.md).
+- Локальная сборка app, релизы и правила для агентов: [AGENTS.md](AGENTS.md).
 - Архитектура, протоколы и исследования ведутся в Notion владельца.
 
 Протокол станции изучен по открытым проектам [quasard](https://github.com/amirilivice/quasard),

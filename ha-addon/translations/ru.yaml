@@ -1,0 +1,27 @@
+configuration:
+  port:
+    name: Порт
+    description: Порт для станций (ws://<хост>:<порт>/uni.ws) и интеграции Home Assistant.
+  api_token:
+    name: API-токен
+    description: Токен, по которому подключается интеграция. Оставьте пустым, чтобы адаптер сгенерировал его (выводится в журнал).
+  mic_gain_db:
+    name: Усиление микрофона (дБ)
+    description: Станция отдаёт очень тихий звук (около -45 dBFS); усиление применяется до STT Home Assistant.
+  speech_threshold_db:
+    name: Порог речи (dBFS)
+    description: Уровень после усиления, который считается речью; не даёт станции закрыть микрофон через 5 с.
+  spotter_tail_ms:
+    name: Хвост слова активации (мс)
+    description: Сколько можно отрезать от конца «Алиса» в начале команды; режется, только если после него пауза.
+  glagol_accept_any:
+    name: Принимать чужие glagol-токены
+    description: Не мешать другим локальным клиентам станции (например, интеграции yandex_station).
+  account_uid:
+    name: uid аккаунта Яндекса
+    description: Необязательно, сообщается станции в ответах авторизации.
+  debug_capture:
+    name: Сохранять отчёты станции
+    description: Отладка — сохранять сырые отчёты станции в /addon_configs/<app>/captures.
+  log_level:
+    name: Уровень журнала

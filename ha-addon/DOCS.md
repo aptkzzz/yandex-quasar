@@ -1,21 +1,100 @@
 # Quasar Adapter
 
-Local replacement of the Yandex cloud voice backend (uniproxy) for rooted Yandex Stations.
-The station keeps its wake word, microphones and speaker; recognition, intents and answers come from
-Home Assistant Assist through the **Yandex Station (Quasar Adapter)** custom integration.
+Адаптер — это сервер, к которому рутованная Яндекс Станция подключается вместо облака Яндекса. Он принимает голос
+со станции, передаёт его в Home Assistant и проигрывает на станции ответ. Сущности станции в HA создаёт
+интеграция **Yandex Station (Quasar Adapter)**: без неё app работает, но HA станцию не увидит.
 
-## Setup
+> Неофициальный проект, с Яндексом не связан. Нужен root-доступ к станции, всё делается на свой риск.
 
-1. Start the app. The first start generates an API token and prints it in the log
-   (or set your own in the `api_token` option).
-2. Home Assistant discovers the adapter via zeroconf; enter the token in the integration dialog.
-3. Point the station to the adapter (root required): in `/system/vendor/quasar/quasar.cfg` set
-   `"uniProxyUrl" : "ws://<home-assistant-ip>:<port>/uni.ws"` and restart quasar.
-   Full unbinding from the Yandex cloud: see the [README](https://github.com/darkdarin/yandex-quasar#установка).
+## Установка
 
-## Options
+### 1. Запустить app
 
-- `spotter_tail_ms` — the longest wake-word tail ("-sa" of "Alisa") to cut from the start of the command. The leading
-  sound is cut only when a pause follows it, so a command spoken right after the wake word stays intact.
-- `speech_threshold_db` — level (after `mic_gain_db`) that counts as speech; also separates the wake-word tail from
-  the pause after it.
+1. Нажмите **Запустить**.
+2. Откройте вкладку **Журнал** и скопируйте токен из строки `Generated new HA API token: …`.
+   Токен генерируется один раз и хранится внутри app. Чтобы задать свой, впишите его в опцию **API token** и
+   перезапустите app.
+
+### 2. Подключить интеграцию
+
+1. Установите через HACS интеграцию **Yandex Station (Quasar Adapter)** из репозитория
+   `https://github.com/darkdarin/yandex-quasar` (тип *Integration*) и перезапустите Home Assistant.
+2. **Настройки → Устройства и службы**: адаптер найдётся сам (блок «Обнаружено»). Нажмите **Настроить** и
+   вставьте токен. Если адаптер не нашёлся, добавьте интеграцию вручную: IP Home Assistant и порт `8080`.
+
+### 3. Перенаправить станцию
+
+На станции (по SSH или ADB) в `/system/vendor/quasar/quasar.cfg` замените `uniProxyUrl`:
+
+```json
+"uniProxyUrl" : "ws://<IP Home Assistant>:8080/uni.ws",
+```
+
+и перезапустите станцию командой `/system/vendor/quasar/q restart`. Корень станции смонтирован только для чтения:
+перед правкой выполните `mount -o remount,rw /`, после неё `sync; mount -o remount,ro /`. Через 1–2 минуты станция
+подключится, в журнале app появится `Station … connected`, а в HA — устройство станции.
+
+Затем на странице устройства выберите Assist-пайплайн в списке **Ассистент**.
+
+### 4. Полная отвязка от облака (рекомендуется)
+
+После шага 3 станция берёт голос у адаптера, а конфиг и обновления — всё ещё у Яндекса. Адаптер умеет заменить
+и это. Для этого:
+
+1. Положите в папку конфигурации app на хосте Home Assistant `/addon_configs/7391c79f_quasar_adapter/` два файла
+   со станции:
+   - `devices.json` — копия `/data/quasar/devices.json`;
+   - `sync_info_base.json` — JSON из `/data/quasar/data/user_config.dat` (перед ним в файле несколько байт
+     заголовка).
+
+   Папку видно через app Terminal & SSH, Samba или Studio Code Server.
+2. Перезапустите app.
+3. Направьте на адаптер остальные адреса в `quasar.cfg` станции.
+
+Полная инструкция с командами, таблицей ключей `quasar.cfg` и откатом — в
+[README проекта](https://github.com/darkdarin/yandex-quasar#шаг-3б-рекомендуется-полностью-отвязать-станцию-от-облака-яндекса).
+
+> ⚠️ После полной отвязки станция пропадёт из приложения «Дом с Алисой», Яндекс Музыка на ней работать не будет.
+>
+> 🔒 `devices.json` содержит ключи станции: никому его не отправляйте.
+
+## Music Assistant
+
+Для каждой станции адаптер поднимает плеер **Sendspin**, и Music Assistant находит его сам. При первом подключении
+Music Assistant попросит код сопряжения: код придёт уведомлением в Home Assistant.
+
+## Опции
+
+Обычно менять ничего не нужно.
+
+| Опция | По умолчанию | Зачем |
+|---|---|---|
+| **Порт** | `8080` | Порт для станций и интеграции. При смене поменяйте его в `quasar.cfg` станции и в интеграции |
+| **API-токен** | пусто | Свой токен для интеграции. Пусто — адаптер сгенерирует токен и выведет его в журнал |
+| **Усиление микрофона** | `30` дБ | Станция отдаёт очень тихий звук. Увеличьте, если STT плохо слышит, уменьшите, если звук хрипит |
+| **Порог речи** | `-40` dBFS | Уровень, с которого звук считается речью. От него зависит, не закроет ли станция микрофон посреди длинной фразы |
+| **Хвост слова активации** | `300` мс | Сколько можно отрезать от хвоста «Алиса» в начале команды, если STT дописывает лишнее слово («Так,», «Всё,»). Режется, только если после хвоста есть пауза |
+| **Принимать чужие glagol-токены** | включено | Не мешать другим локальным клиентам станции, например интеграции `yandex_station` |
+| **uid аккаунта Яндекса** | пусто | Необязательно: uid аккаунта, который адаптер сообщает станции |
+| **Сохранять отчёты станции** | выключено | Отладка: сохранять сырые отчёты станции в `/addon_configs/7391c79f_quasar_adapter/captures` |
+| **Уровень журнала** | `info` | `debug` — для поиска проблем |
+
+## Сеть
+
+App работает в сети хоста и занимает порты:
+
+- `8080` — станции (`/uni.ws` и замена облачных сервисов) и интеграция HA;
+- `8928` и следующие, по одному на станцию, — плееры Sendspin для Music Assistant.
+
+Адаптер анонсирует себя в локальной сети через mDNS (`_quasar-adapter._tcp`). Открывать эти порты в интернет не нужно
+и небезопасно.
+
+## Если что-то не работает
+
+- **Станция не подключается.** Проверьте адрес и порт в `uniProxyUrl` и что станция видит HA по сети. После
+  перезапуска app станция переподключается в течение 1–3 минут.
+- **Станция слышит «Алиса», но не отвечает.** Проверьте, что для станции выбран пайплайн, и посмотрите отладку:
+  **Настройки → Голосовые ассистенты → ⋮ → Отладка**.
+- **Долгие ответы LLM.** Если Home Assistant не ответил за 55 секунд, станция проиграет короткий звук ошибки.
+- **Нужно больше деталей.** Поставьте уровень журнала `debug`, повторите проблему и приложите журнал к issue на
+  [GitHub](https://github.com/darkdarin/yandex-quasar/issues). Перед публикацией уберите из журнала токены.
