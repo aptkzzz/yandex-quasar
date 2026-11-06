@@ -64,6 +64,8 @@ class Station:
     wake_word: str = "alisa"
     # Adapter gain (mic_gain_db) on the audio sent to HA; off = raw station audio for processing in HA.
     mic_preamp: bool = True
+    # Cut the end of the wake word ("-са") from the start of the command (SpotterTailTrimmer, spotter_tail_ms).
+    trim_wake_word: bool = True
     state: StationState = field(default_factory=StationState)
 
     @property
@@ -84,6 +86,7 @@ class Station:
             "wake_words": [{"id": key, "name": name} for key, name in WAKE_WORDS.items()],
             "active_wake_word": self.wake_word,
             "mic_preamp": self.mic_preamp,
+            "trim_wake_word": self.trim_wake_word,
             "state": self.state.as_dict(),
         }
 

@@ -121,6 +121,9 @@
     "switch": {
       "mic_preamp": {
         "name": "Microphone preamp"
+      },
+      "trim_wake_word": {
+        "name": "Trim wake word"
       }
     }
   },

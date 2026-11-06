@@ -270,7 +270,8 @@ class StationSession:
         if action == "SpotterEnd":
             if turn.phase == "listening" and not turn.forwarding:
                 self._start_forwarding(turn, keep_preroll=False)
-                turn.tail_trimmer = SpotterTailTrimmer(self.cfg.spotter_tail_ms, self.cfg.speech_threshold_db)
+                if self.station.trim_wake_word:
+                    turn.tail_trimmer = SpotterTailTrimmer(self.cfg.spotter_tail_ms, self.cfg.speech_threshold_db)
         elif action == "Close" and turn.phase == "listening":
             reason = ctrl.Close.Reason
             _LOGGER.info("[%s] mic closed by station, reason=%s", self.station.device_id, reason)
@@ -689,13 +690,19 @@ class StationSession:
     async def _cmd_station_get(self, data: dict) -> dict:
         return self.station.info()
 
-    async def _cmd_config_mic_preamp(self, data: dict) -> dict:
+    def _set_flag(self, attr: str, data: dict) -> dict:
         if not isinstance(data.get("enabled"), bool):
             raise CommandError("invalid", "enabled must be true or false")
-        self.station.mic_preamp = data["enabled"]
+        setattr(self.station, attr, data["enabled"])
         self.hub.save_registry()
-        _LOGGER.info("[%s] mic preamp %s", self.station.device_id, "on" if self.station.mic_preamp else "off")
+        _LOGGER.info("[%s] %s %s", self.station.device_id, attr, "on" if data["enabled"] else "off")
         return self.station.info()
+
+    async def _cmd_config_mic_preamp(self, data: dict) -> dict:
+        return self._set_flag("mic_preamp", data)
+
+    async def _cmd_config_trim_wake_word(self, data: dict) -> dict:
+        return self._set_flag("trim_wake_word", data)
 
     async def _cmd_config_wake_word(self, data: dict) -> dict:
         """Switch the on-device spotter: served as account_config.spotter, applied via push_update_config."""

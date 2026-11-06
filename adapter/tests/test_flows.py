@@ -291,3 +291,27 @@ async def test_mic_preamp_off_sends_raw_audio_but_keeps_speech_detection(adapter
             assert asr.Event.AsrResult.Recognition[0].Normalized == "…"
             break
     assert start["data"]["turn_seq"]
+
+
+async def test_trim_wake_word_switch(adapter, station, ha):
+    server, _http = adapter
+    from quasar_adapter.server import HUB_KEY
+
+    reply = await ha.request("config.trim_wake_word", DEVICE_ID, {"enabled": False})
+    assert reply["ok"] and reply["data"]["trim_wake_word"] is False
+    # With trimming off the command audio starts right at SpotterEnd: a leading tail + pause is not cut.
+    await station.send(station.voice_input("voice-notrim", 7))
+    await station.expect_event("InputStartAck")
+    start = await ha.expect("voice.start")
+    for page in make_opus(1.0, 300):
+        await station.send_audio(7, page)
+    await station.send(station.stream_control(7, "SpotterEnd"))
+    for page in make_opus(0.5, 600):
+        await station.send_audio(7, page)
+    pcm = bytearray()
+    while len(pcm) < 16000 * 2 * 0.45:
+        kind, seq, chunk = await asyncio.wait_for(ha.audio.get(), 5)
+        assert seq == start["data"]["turn_seq"]
+        pcm += chunk
+    assert server.app[HUB_KEY].sessions[DEVICE_ID]._voice.tail_trimmer is None
+    assert (await ha.request("config.trim_wake_word", DEVICE_ID, {"enabled": True}))["data"]["trim_wake_word"]
