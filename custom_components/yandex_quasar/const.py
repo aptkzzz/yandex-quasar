@@ -1,4 +1,4 @@
-"""Constants for the Yandex Station (Quasar Adapter) integration."""
+"""Constants for the Yandex Station integration."""
 
 DOMAIN = "yandex_quasar"
 MANUFACTURER = "Yandex"

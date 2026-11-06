@@ -1,4 +1,4 @@
-"""Config flow for Yandex Station (Quasar Adapter)."""
+"""Config flow for the Yandex Station integration (adapter connection, station setup)."""
 
 from __future__ import annotations
 
