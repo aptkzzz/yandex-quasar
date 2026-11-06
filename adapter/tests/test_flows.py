@@ -11,7 +11,7 @@ from google.protobuf.json_format import MessageToDict
 
 from quasar_adapter import aapi
 
-from .conftest import DEVICE_ID, make_opus
+from .conftest import DEVICE_ID, make_opus, make_opus_expr
 
 
 async def test_bad_token_rejected(adapter):
@@ -42,23 +42,24 @@ async def _voice_until_recognized(station, ha, message_id="voice-1"):
     assert start["station"] == DEVICE_ID
     assert start["data"]["wake_word"] == "Алиса"
 
-    # Pre-roll with the wake word arrives in a burst together with SpotterEnd and must not reach HA.
+    # The pre-roll (start of the command said while the spotter confirmed the wake word) arrives in a burst with
+    # SpotterEnd and is kept by default; live audio follows.
     for page in make_opus(1.0, 300):
         await station.send_audio(1, page)
     await station.send(station.stream_control(1, "SpotterEnd"))
     for page in make_opus(1.0, 600):
         await station.send_audio(1, page)
 
-    # 1 s after SpotterEnd; continuous sound has no wake-word tail to cut (see test_audio.py).
+    # 1 s pre-roll + 1 s after SpotterEnd; continuous sound has no wake-word tail to cut (see test_audio.py).
     pcm = bytearray()
-    while len(pcm) < 16000 * 2 * 0.9:
+    while len(pcm) < 16000 * 2 * 1.9:
         kind, seq, chunk = await asyncio.wait_for(ha.audio.get(), 5)
         assert kind == 1 and seq == start["data"]["turn_seq"]
         pcm += chunk
     await asyncio.sleep(0.3)
     while not ha.audio.empty():
         pcm += (await ha.audio.get())[2]
-    assert len(pcm) <= 16000 * 2 * 1.05, "pre-roll leaked into HA audio"
+    assert len(pcm) <= 16000 * 2 * 2.05
     return start["data"]["turn_id"]
 
 
@@ -335,3 +336,71 @@ async def test_keep_preroll_switch(adapter, station, ha):
         assert seq == start["data"]["turn_seq"]
         pcm += chunk
     assert server.app[HUB_KEY].sessions[DEVICE_ID]._voice.tail_trimmer is None
+
+
+async def test_drop_preroll_switch(station, ha):
+    assert (await ha.request("config.drop_preroll", DEVICE_ID, {"enabled": True}))["data"]["drop_preroll"] is True
+    await station.send(station.voice_input("voice-drop", 11))
+    await station.expect_event("InputStartAck")
+    start = await ha.expect("voice.start")
+    for page in make_opus(1.0, 300):
+        await station.send_audio(11, page)
+    await station.send(station.stream_control(11, "SpotterEnd"))
+    for page in make_opus(1.0, 600):
+        await station.send_audio(11, page)
+    pcm = bytearray()
+    while len(pcm) < 16000 * 2 * 0.9:
+        kind, seq, chunk = await asyncio.wait_for(ha.audio.get(), 5)
+        assert seq == start["data"]["turn_seq"]
+        pcm += chunk
+    await asyncio.sleep(0.3)
+    while not ha.audio.empty():
+        pcm += (await ha.audio.get())[2]
+    assert len(pcm) <= 16000 * 2 * 1.05, "pre-roll reached HA although drop_preroll is on"
+
+
+async def _wake_turn_audio(station, ha, message_id, stream_id, preroll, live, seconds):
+    await station.send(station.voice_input(message_id, stream_id))
+    await station.expect_event("InputStartAck")
+    start = await ha.expect("voice.start")
+    for page in preroll:
+        await station.send_audio(stream_id, page)
+    await station.send(station.stream_control(stream_id, "SpotterEnd"))
+    for page in live:
+        await station.send_audio(stream_id, page)
+    pcm = bytearray()
+    while len(pcm) < 16000 * 2 * seconds:
+        kind, seq, chunk = await asyncio.wait_for(ha.audio.get(), 5)
+        assert seq == start["data"]["turn_seq"]
+        pcm += chunk
+    await asyncio.sleep(0.3)
+    while not ha.audio.empty():
+        pcm += (await ha.audio.get())[2]
+    return bytes(pcm)
+
+
+# "-са" tail (150 ms), a 250 ms pause, then the command: the shape of a real pre-roll.
+TAIL_THEN_COMMAND = "if(lt(t,0.15),0.5*sin(2*PI*300*t),if(lt(t,0.4),0,0.5*sin(2*PI*500*t)))"
+
+
+async def test_tail_is_trimmed_from_kept_preroll(station, ha):
+    pcm = await _wake_turn_audio(station, ha, "voice-tail", 13, make_opus_expr(1.0, TAIL_THEN_COMMAND),
+                                 make_opus(0.5, 500), 1.0)
+    # 1.5 s sent; the tail plus most of the pause (~0.3-0.4 s) is gone.
+    assert 16000 * 2 * 1.05 < len(pcm) < 16000 * 2 * 1.3
+
+
+async def test_include_wake_word(adapter, station, ha):
+    server, http = adapter
+    reply = await ha.request("config.include_wake_word", DEVICE_ID, {"enabled": True})
+    assert reply["ok"] and reply["data"]["include_wake_word"] is True
+    push = await station.expect_event("Push")
+    assert push.Event.Push.Directives[0].Name == "push_update_config"
+    async with http.get(server.make_url(f"/quasar/get_sync_info?device_id={DEVICE_ID}")) as r:
+        recognizer = (await r.json())["config"]["system_config"]["voiceDialogSettings"]["recognizer"]
+    assert recognizer["spotterSubscribePointShiftMs"] == -1200
+    # Neither dropped nor trimmed: the leading wake word is the point.
+    assert (await ha.request("config.drop_preroll", DEVICE_ID, {"enabled": True}))["ok"]
+    pcm = await _wake_turn_audio(station, ha, "voice-ww", 15, make_opus_expr(1.0, TAIL_THEN_COMMAND),
+                                 make_opus(0.5, 500), 1.4)
+    assert len(pcm) >= 16000 * 2 * 1.45

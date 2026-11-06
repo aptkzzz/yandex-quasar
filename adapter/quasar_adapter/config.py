@@ -33,6 +33,8 @@ class Config:
     # Audio right after SpotterEnd may contain the end of the wake word ("-са"); STT turns it into "Так,"/"Да,".
     # A leading sound ending within this window is cut only when a pause follows (see SpotterTailTrimmer).
     spotter_tail_ms: int = 300
+    # Stations with include_wake_word start the voice stream this long before the end of the wake word.
+    wake_word_lead_ms: int = 1200
     playback_grace: float = 2.0
     # Station sound (EStoredSound name) played when the HA pipeline fails; empty disables it.
     error_sound: str = "SpotterCancel"

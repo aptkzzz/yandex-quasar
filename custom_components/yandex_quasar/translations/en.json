@@ -127,6 +127,9 @@
       },
       "mic_preamp": {
         "name": "Microphone preamp"
+      },
+      "include_wake_word": {
+        "name": "Include wake word"
       }
     }
   },

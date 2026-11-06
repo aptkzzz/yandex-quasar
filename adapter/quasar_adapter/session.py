@@ -269,10 +269,13 @@ class StationSession:
         action = ctrl.WhichOneof("Action")
         if action == "SpotterEnd":
             if turn.phase == "listening" and not turn.forwarding:
-                # A kept pre-roll starts with the whole wake word, so cutting its tail would make no sense.
-                self._start_forwarding(turn, keep_preroll=not self.station.drop_preroll)
-                if self.station.drop_preroll and self.station.trim_wake_word:
+                # The pre-roll starts ~80 ms before the end of the wake word (its "-са" tail) and holds whatever was
+                # said while the spotter was confirming it. With include_wake_word the stream starts earlier and the
+                # whole word is wanted, so it is neither dropped nor trimmed.
+                station = self.station
+                if station.trim_wake_word and not station.include_wake_word:
                     turn.tail_trimmer = SpotterTailTrimmer(self.cfg.spotter_tail_ms, self.cfg.speech_threshold_db)
+                self._start_forwarding(turn, keep_preroll=station.include_wake_word or not station.drop_preroll)
         elif action == "Close" and turn.phase == "listening":
             reason = ctrl.Close.Reason
             _LOGGER.info("[%s] mic closed by station, reason=%s", self.station.device_id, reason)
@@ -707,6 +710,11 @@ class StationSession:
 
     async def _cmd_config_drop_preroll(self, data: dict) -> dict:
         return self._set_flag("drop_preroll", data)
+
+    async def _cmd_config_include_wake_word(self, data: dict) -> dict:
+        info = self._set_flag("include_wake_word", data)
+        await self._push(aapi.directive("push_update_config"))  # the stream start point comes from get_sync_info
+        return info
 
     async def _cmd_config_wake_word(self, data: dict) -> dict:
         """Switch the on-device spotter: served as account_config.spotter, applied via push_update_config."""

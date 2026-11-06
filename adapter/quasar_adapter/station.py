@@ -66,8 +66,11 @@ class Station:
     mic_preamp: bool = True
     # Cut the end of the wake word ("-са") from the start of the command (SpotterTailTrimmer, spotter_tail_ms).
     trim_wake_word: bool = True
-    # Drop the ~2 s the station buffered before SpotterEnd (background + the wake word itself).
-    drop_preroll: bool = True
+    # The burst sent with SpotterEnd: audio from just before the end of the wake word up to the moment the spotter
+    # confirmed it, i.e. the start of a quickly spoken command. Dropping it loses that start.
+    drop_preroll: bool = False
+    # Start the stream well before the end of the wake word (spotterSubscribePointShiftMs) so HA gets it whole.
+    include_wake_word: bool = False
     state: StationState = field(default_factory=StationState)
 
     @property
@@ -90,6 +93,7 @@ class Station:
             "mic_preamp": self.mic_preamp,
             "trim_wake_word": self.trim_wake_word,
             "drop_preroll": self.drop_preroll,
+            "include_wake_word": self.include_wake_word,
             "state": self.state.as_dict(),
         }
 

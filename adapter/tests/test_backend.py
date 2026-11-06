@@ -85,3 +85,15 @@ async def test_glagol_and_misc(tmp_path):
         async with http.get(server.make_url("/some/unknown")) as r:
             assert (await r.json()) == {"status": "ok"}
     await server.close()
+
+
+def test_registry_resets_preroll_dropped_by_0_2_14(tmp_path):
+    from quasar_adapter.hub import Hub
+
+    (tmp_path / "stations.json").write_text(json.dumps([
+        {"device_id": "OLD", "drop_preroll": True},  # 0.2.14 saved its default
+        {"device_id": "NEW", "drop_preroll": True, "audio_defaults": 2},  # chosen by the user since
+    ]))
+    hub = Hub(Config(data_dir=tmp_path, api_token="x"), "adapter")
+    assert hub.stations["OLD"].drop_preroll is False
+    assert hub.stations["NEW"].drop_preroll is True

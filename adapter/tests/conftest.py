@@ -20,6 +20,17 @@ from quasar_adapter.server import build_app
 DEVICE_ID = "TESTDEVICE0001"
 
 
+def make_opus_expr(seconds: float, expr: str) -> list[bytes]:
+    """Ogg/Opus 16 kHz mono from an ffmpeg aevalsrc expression of t (e.g. a tone with a gap)."""
+    out = subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", f"aevalsrc='{expr}':s=16000:d={seconds}",
+         "-c:a", "libopus", "-b:a", "24k", "-page_duration", "20000", "-f", "ogg", "pipe:1"],
+        check=True, capture_output=True,
+    ).stdout
+    pages, _ = split_ogg_pages(out)
+    return pages
+
+
 def make_opus(seconds: float, freq: int) -> list[bytes]:
     """Ogg/Opus 16 kHz mono sine, split into ~20 ms pages like the station sends."""
     out = subprocess.run(

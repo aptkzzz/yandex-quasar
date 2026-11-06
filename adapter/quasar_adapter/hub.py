@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 AUDIO_KIND_MIC_PCM = 0x01
+AUDIO_DEFAULTS = 2  # bump when a per-station audio default changes meaning
 
 
 class Hub:
@@ -75,14 +76,19 @@ class Hub:
                 device_id=item["device_id"], platform=item.get("platform", ""),
                 firmware=item.get("firmware", ""), name=item.get("name", ""),
                 wake_word=item.get("wake_word", "alisa"), mic_preamp=item.get("mic_preamp", True),
-                trim_wake_word=item.get("trim_wake_word", True), drop_preroll=item.get("drop_preroll", True),
+                trim_wake_word=item.get("trim_wake_word", True),
+                # 0.2.14 dropped the pre-roll by default and saved that; it turned out to be the start of the command,
+                # so registries written before AUDIO_DEFAULTS reset it to "keep".
+                drop_preroll=item.get("drop_preroll", False) if item.get("audio_defaults") == AUDIO_DEFAULTS else False,
+                include_wake_word=item.get("include_wake_word", False),
             )
 
     def save_registry(self) -> None:
         data = [
             {"device_id": s.device_id, "platform": s.platform, "firmware": s.firmware, "name": s.name,
              "wake_word": s.wake_word, "mic_preamp": s.mic_preamp,
-             "trim_wake_word": s.trim_wake_word, "drop_preroll": s.drop_preroll}
+             "trim_wake_word": s.trim_wake_word, "drop_preroll": s.drop_preroll,
+             "include_wake_word": s.include_wake_word, "audio_defaults": AUDIO_DEFAULTS}
             for s in self.stations.values()
         ]
         self._registry_path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")

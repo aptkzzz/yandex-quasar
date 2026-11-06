@@ -166,6 +166,10 @@ class Backend:
         system = config.setdefault("system_config", {})
         system["uniProxyUrl"] = self.uniproxy_url()
         system["onlineSpotterEnabled"] = False
+        if station is not None and station.include_wake_word:
+            # Start the voice stream this far before the end of the wake word (firmware default: -80 ms).
+            recognizer = system.setdefault("voiceDialogSettings", {}).setdefault("recognizer", {})
+            recognizer["spotterSubscribePointShiftMs"] = -self.cfg.wake_word_lead_ms
         # LLM agents with tools (e.g. Music Assistant search) often need >15 s, the firmware default.
         system["vinsRequestTimeout"] = self.cfg.vins_request_timeout_ms
         system.setdefault("voiceDialogSettings", {})["vinsRequestTimeout"] = self.cfg.vins_request_timeout_ms

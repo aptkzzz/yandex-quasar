@@ -21,6 +21,7 @@ PARALLEL_UPDATES = 0
 @dataclass(frozen=True, kw_only=True)
 class StationSwitchDescription(SwitchEntityDescription):
     command: str  # adapter command taking {"enabled": bool}; the flag of the same name is in StationInfo
+    default: bool = True  # shown until the adapter reports the flag (older adapters)
 
 
 SWITCHES = (
@@ -30,12 +31,15 @@ SWITCHES = (
     # On: the end of "Алиса" is cut from the start of the command when a pause follows it.
     StationSwitchDescription(key="trim_wake_word", translation_key="trim_wake_word", command="config.trim_wake_word",
                              entity_category=EntityCategory.CONFIG),
-    # On: the ~2 s the station buffered before the wake word ended never reach HA.
+    # On: the burst sent with SpotterEnd (start of a quickly spoken command) never reaches HA. Off by default.
     StationSwitchDescription(key="drop_preroll", translation_key="drop_preroll", command="config.drop_preroll",
-                             entity_category=EntityCategory.CONFIG),
+                             entity_category=EntityCategory.CONFIG, default=False),
+    # On: the station starts the stream ~1.2 s earlier, so the wake word itself reaches HA (no drop, no trim).
+    StationSwitchDescription(key="include_wake_word", translation_key="include_wake_word",
+                             command="config.include_wake_word", entity_category=EntityCategory.CONFIG, default=False),
 )
 # HA sorts a device's config entities by name, so the names are chosen to line up after the Assist selects:
-# assistant, end-of-speech detection, wake word end, pre-roll, preamp.
+# assistant, end-of-speech detection, wake word end, pre-roll, include wake word, preamp.
 
 
 async def async_setup_entry(
@@ -55,7 +59,7 @@ class YandexQuasarStationSwitch(YandexQuasarEntity, SwitchEntity):
 
     @property
     def is_on(self) -> bool:
-        return bool(self.station.get(self.entity_description.key, True))
+        return bool(self.station.get(self.entity_description.key, self.entity_description.default))
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self._set(True)
