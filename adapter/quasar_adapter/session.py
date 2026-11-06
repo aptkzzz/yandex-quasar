@@ -269,8 +269,9 @@ class StationSession:
         action = ctrl.WhichOneof("Action")
         if action == "SpotterEnd":
             if turn.phase == "listening" and not turn.forwarding:
-                self._start_forwarding(turn, keep_preroll=False)
-                if self.station.trim_wake_word:
+                # A kept pre-roll starts with the whole wake word, so cutting its tail would make no sense.
+                self._start_forwarding(turn, keep_preroll=not self.station.drop_preroll)
+                if self.station.drop_preroll and self.station.trim_wake_word:
                     turn.tail_trimmer = SpotterTailTrimmer(self.cfg.spotter_tail_ms, self.cfg.speech_threshold_db)
         elif action == "Close" and turn.phase == "listening":
             reason = ctrl.Close.Reason
@@ -703,6 +704,9 @@ class StationSession:
 
     async def _cmd_config_trim_wake_word(self, data: dict) -> dict:
         return self._set_flag("trim_wake_word", data)
+
+    async def _cmd_config_drop_preroll(self, data: dict) -> dict:
+        return self._set_flag("drop_preroll", data)
 
     async def _cmd_config_wake_word(self, data: dict) -> dict:
         """Switch the on-device spotter: served as account_config.spotter, applied via push_update_config."""

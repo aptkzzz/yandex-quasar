@@ -1,4 +1,4 @@
-"""Per-station audio switches stored in the adapter: microphone preamp and wake-word tail trimming."""
+"""Per-station audio switches stored in the adapter: wake-word tail, pre-roll, microphone preamp."""
 
 from __future__ import annotations
 
@@ -30,7 +30,12 @@ SWITCHES = (
     # On: the end of "Алиса" is cut from the start of the command when a pause follows it.
     StationSwitchDescription(key="trim_wake_word", translation_key="trim_wake_word", command="config.trim_wake_word",
                              entity_category=EntityCategory.CONFIG),
+    # On: the ~2 s the station buffered before the wake word ended never reach HA.
+    StationSwitchDescription(key="drop_preroll", translation_key="drop_preroll", command="config.drop_preroll",
+                             entity_category=EntityCategory.CONFIG),
 )
+# HA sorts a device's config entities by name, so the names are chosen to line up after the Assist selects:
+# assistant, end-of-speech detection, wake word end, pre-roll, preamp.
 
 
 async def async_setup_entry(

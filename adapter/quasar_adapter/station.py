@@ -66,6 +66,8 @@ class Station:
     mic_preamp: bool = True
     # Cut the end of the wake word ("-са") from the start of the command (SpotterTailTrimmer, spotter_tail_ms).
     trim_wake_word: bool = True
+    # Drop the ~2 s the station buffered before SpotterEnd (background + the wake word itself).
+    drop_preroll: bool = True
     state: StationState = field(default_factory=StationState)
 
     @property
@@ -87,6 +89,7 @@ class Station:
             "active_wake_word": self.wake_word,
             "mic_preamp": self.mic_preamp,
             "trim_wake_word": self.trim_wake_word,
+            "drop_preroll": self.drop_preroll,
             "state": self.state.as_dict(),
         }
 

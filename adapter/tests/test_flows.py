@@ -315,3 +315,23 @@ async def test_trim_wake_word_switch(adapter, station, ha):
         pcm += chunk
     assert server.app[HUB_KEY].sessions[DEVICE_ID]._voice.tail_trimmer is None
     assert (await ha.request("config.trim_wake_word", DEVICE_ID, {"enabled": True}))["data"]["trim_wake_word"]
+
+
+async def test_keep_preroll_switch(adapter, station, ha):
+    server, _http = adapter
+    from quasar_adapter.server import HUB_KEY
+
+    reply = await ha.request("config.drop_preroll", DEVICE_ID, {"enabled": False})
+    assert reply["ok"] and reply["data"]["drop_preroll"] is False
+    await station.send(station.voice_input("voice-preroll", 9))
+    await station.expect_event("InputStartAck")
+    start = await ha.expect("voice.start")
+    for page in make_opus(1.0, 300):  # pre-roll burst
+        await station.send_audio(9, page)
+    await station.send(station.stream_control(9, "SpotterEnd"))
+    pcm = bytearray()
+    while len(pcm) < 16000 * 2 * 0.9:  # the 1 s pre-roll reaches HA although nothing followed SpotterEnd
+        kind, seq, chunk = await asyncio.wait_for(ha.audio.get(), 5)
+        assert seq == start["data"]["turn_seq"]
+        pcm += chunk
+    assert server.app[HUB_KEY].sessions[DEVICE_ID]._voice.tail_trimmer is None

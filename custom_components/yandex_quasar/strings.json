@@ -119,11 +119,14 @@
       }
     },
     "switch": {
+      "trim_wake_word": {
+        "name": "Ignore end of wake word"
+      },
+      "drop_preroll": {
+        "name": "Ignore pre-roll"
+      },
       "mic_preamp": {
         "name": "Microphone preamp"
-      },
-      "trim_wake_word": {
-        "name": "Trim wake word"
       }
     }
   },
