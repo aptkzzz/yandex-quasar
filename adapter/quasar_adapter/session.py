@@ -180,7 +180,10 @@ class StationSession:
         self._turns[turn.turn_id] = turn
         self._voice = turn
         await self._send(aapi.input_start_ack(turn.message_id))
-        wake_word = vi.SpotterPhrase.capitalize() if vi.Request.ActivationType == "spotter" else None
+        phrase = (vi.SpotterPhrase or "").strip()
+        wake_word = (
+            (phrase or WAKE_WORDS.get(self.station.wake_word, "")).capitalize() or None
+        ) if vi.Request.ActivationType == "spotter" else None
         _LOGGER.info(
             "[%s] voice turn %s (activation=%s)", self.station.device_id, turn.turn_id,
             vi.Request.ActivationType or "?",

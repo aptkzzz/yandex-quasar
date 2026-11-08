@@ -3,7 +3,7 @@ name: Release
 # A pushed tag v<version>:
 # - checks that the app, the integration and the adapter package all carry <version>;
 # - builds the app image on native amd64 and arm64 runners and publishes
-#   ghcr.io/darkdarin/quasar-adapter:<version> (the app's "image"), plus :latest;
+#   ghcr.io/aptkzzz/quasar-adapter:<version> (the app's "image"), plus :latest;
 # - creates the GitHub release; its notes are the "## <version>" section of ha-addon/CHANGELOG.md.
 # HACS installs the integration from the same tag.
 on:
@@ -15,7 +15,7 @@ permissions:
   packages: write
 
 env:
-  IMAGE: ghcr.io/darkdarin/quasar-adapter
+  IMAGE: ghcr.io/aptkzzz/quasar-adapter
 
 jobs:
   check:

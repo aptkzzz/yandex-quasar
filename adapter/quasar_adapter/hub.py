@@ -106,7 +106,7 @@ class Hub:
         self.stations[station.device_id] = station
         old = self.sessions.get(station.device_id)
         self.sessions[station.device_id] = session
-        if old is not None and old is not session:
+        if old is not None and old is not session and old_voice is None:
             self.track(asyncio.create_task(old.ws.close()))
         self.save_registry()
         if is_new:
