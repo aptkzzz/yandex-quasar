@@ -32,7 +32,6 @@ def _adapter_id(cfg: Config) -> str:
     path.write_text(value)
     return value
 
-
 async def handle_uniproxy(request: web.Request) -> web.StreamResponse:
     hub: Hub = request.app[HUB_KEY]
     device_id = request.headers.get("X-UPRX-DEVICE-ID")
@@ -40,6 +39,22 @@ async def handle_uniproxy(request: web.Request) -> web.StreamResponse:
         raise web.HTTPBadRequest(text="X-UPRX-DEVICE-ID required")
     ws = web.WebSocketResponse(compress=False, max_msg_size=0, heartbeat=30)
     await ws.prepare(request)
+
+    session = hub.sessions.get(device_id)
+    if session is not None and not session.closed:
+        # Станция открыла ещё один WS для того же диалога: переключаем транспорт,
+        # вторую сессию не создаём (иначе аудио/ответ уходят не в тот сокет).
+        await session.adopt(ws)
+        hub.station_reconnected(
+            session,
+            platform=request.headers.get("X-UPRX-DEVICE-MODEL", ""),
+            firmware=request.headers.get("X-UPRX-FIRMWARE", ""),
+            ip=request.remote,
+        )
+        _LOGGER.info("Station %s switched to a new connection from %s", device_id, request.remote)
+        await session.read(ws)
+        return ws
+
     session = StationSession(hub, hub.get_station(device_id), ws)
     hub.station_connected(
         session,
@@ -48,12 +63,7 @@ async def handle_uniproxy(request: web.Request) -> web.StreamResponse:
         ip=request.remote,
     )
     _LOGGER.info("Station %s connected from %s", device_id, request.remote)
-    try:
-        await session.run()
-    finally:
-        await session.close()
-        hub.station_disconnected(session)
-        _LOGGER.info("Station %s disconnected", device_id)
+    await session.read(ws)
     return ws
 
 

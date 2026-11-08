@@ -106,7 +106,7 @@ class Hub:
         self.stations[station.device_id] = station
         old = self.sessions.get(station.device_id)
         self.sessions[station.device_id] = session
-        if old is not None and old is not session and old._voice is None:
+        if old is not None and old is not session:
             self.track(asyncio.create_task(old.ws.close()))
         self.save_registry()
         if is_new:
@@ -122,6 +122,16 @@ class Hub:
             self.sendspin[station.device_id] = player
             self.track(asyncio.create_task(self._start_sendspin(player)))
         return station
+    
+    def station_reconnected(self, session: StationSession, platform: str, firmware: str, ip: str | None) -> None:
+        """Тот же device_id открыл новый WS: обновляем состояние, сессию не заменяем."""
+        station = session.station
+        station.platform = platform or station.platform
+        station.firmware = firmware or station.firmware
+        station.state.connection = "online"
+        station.state.ip = ip
+        self.save_registry()
+        self.emit_state(station)
 
     async def _start_sendspin(self, player: SendspinPlayer) -> None:
         try:

@@ -88,19 +88,38 @@ class StationSession:
 
     # ---- plumbing -------------------------------------------------------------------------------------------
 
-    async def run(self) -> None:
-        async for msg in self.ws:
-            if msg.type.name != "BINARY":
-                continue
-            data: bytes = msg.data
-            try:
-                if aapi.is_aapi(data):
-                    await self._on_message(aapi.parse_client(data))
-                else:
-                    stream_id, payload = aapi.split_stream_frame(data)
-                    await self._on_audio(stream_id, payload)
-            except Exception:
-                _LOGGER.exception("[%s] failed to handle frame", self.station.device_id)
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
+    async def adopt(self, ws: web.WebSocketResponse) -> None:
+        """Новый WS той же станции: дальше отвечаем в него, старый только дочитываем."""
+        async with self._send_lock:
+            self.ws = ws
+        self._closed = False
+
+    async def read(self, ws: web.WebSocketResponse) -> None:
+        try:
+            async for msg in ws:
+                if msg.type.name != "BINARY":
+                    continue
+                data: bytes = msg.data
+                try:
+                    if aapi.is_aapi(data):
+                        await self._on_message(aapi.parse_client(data))
+                    else:
+                        stream_id, payload = aapi.split_stream_frame(data)
+                        await self._on_audio(stream_id, payload)
+                except Exception:
+                    _LOGGER.exception("[%s] failed to handle frame", self.station.device_id)
+        finally:
+            if self.ws is ws:
+                await self.close()
+                self.hub.station_disconnected(self)
+                _LOGGER.info("Station %s disconnected", self.station.device_id)
+
+    async def run(self) -> None:  # совместимость со старыми вызовами/тестами
+        await self.read(self.ws)
 
     async def close(self) -> None:
         self._closed = True
